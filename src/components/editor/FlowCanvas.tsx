@@ -16,6 +16,7 @@ import {
   NodeProps,
   Handle,
   Position,
+  ConnectionLineType,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useAppStore } from '@/stores/useAppStore';
@@ -103,7 +104,7 @@ export const FlowCanvas = () => {
       source: params.source!,
       target: params.target!,
       type: 'smoothstep',
-      style: { stroke: 'hsl(var(--muted-foreground))' },
+      style: { stroke: 'hsl(var(--muted-foreground))', strokeWidth: 2 },
     };
     setEdges(eds => {
       const updated = addEdge(newEdge, eds);
@@ -124,9 +125,13 @@ export const FlowCanvas = () => {
 
   const addNode = useCallback(() => {
     const id = `node_${Date.now()}`;
+    const gridSize = 20;
     const newNode: Node = {
       id,
-      position: { x: 200 + Math.random() * 100, y: 200 + Math.random() * 100 },
+      position: { 
+        x: Math.round((200 + Math.random() * 100) / gridSize) * gridSize, 
+        y: Math.round((200 + Math.random() * 100) / gridSize) * gridSize 
+      },
       data: { label: 'New Node' },
       type: 'custom',
     };
@@ -167,6 +172,8 @@ export const FlowCanvas = () => {
     toast.success('Label updated');
   }, [selectedNode, editingLabel, setNodes, edges, syncToCode]);
 
+  const gridSize = 20;
+
   return (
     <div className="h-full w-full rounded-lg border border-border bg-background overflow-hidden">
       <ReactFlow
@@ -180,14 +187,15 @@ export const FlowCanvas = () => {
         nodeTypes={nodeTypes}
         fitView
         snapToGrid
-        snapGrid={[15, 15]}
+        snapGrid={[gridSize, gridSize]}
+        connectionLineType={ConnectionLineType.SmoothStep}
         defaultEdgeOptions={{
           type: 'smoothstep',
           style: { stroke: 'hsl(var(--muted-foreground))', strokeWidth: 2 },
         }}
         proOptions={{ hideAttribution: true }}
       >
-        <Background color="hsl(var(--border))" gap={20} size={1} />
+        <Background color="hsl(var(--border))" gap={gridSize} size={1} />
         <Controls className="[&>button]:bg-card [&>button]:border-border [&>button]:text-foreground [&>button:hover]:bg-secondary" />
         <MiniMap 
           className="!bg-card !border-border"
