@@ -103,7 +103,7 @@ export const FlowCanvas = () => {
       id: `${params.source}-${params.target}-${Date.now()}`,
       source: params.source!,
       target: params.target!,
-      type: 'smoothstep',
+      type: 'step',
       style: { stroke: 'hsl(var(--muted-foreground))', strokeWidth: 2 },
     };
     setEdges(eds => {
@@ -188,9 +188,9 @@ export const FlowCanvas = () => {
         fitView
         snapToGrid
         snapGrid={[gridSize, gridSize]}
-        connectionLineType={ConnectionLineType.SmoothStep}
+        connectionLineType={ConnectionLineType.Step}
         defaultEdgeOptions={{
-          type: 'smoothstep',
+          type: 'step',
           style: { stroke: 'hsl(var(--muted-foreground))', strokeWidth: 2 },
         }}
         proOptions={{ hideAttribution: true }}

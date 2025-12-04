@@ -69,7 +69,7 @@ export function parseMermaidToFlow(code: string): ParsedDiagram {
           source,
           target,
           label: label || undefined,
-          type: 'smoothstep',
+          type: 'step',
           animated: match[2].includes('.'),
           style: { stroke: 'hsl(var(--muted-foreground))' },
           labelStyle: { fill: 'hsl(var(--foreground))', fontSize: 12 },
