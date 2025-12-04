@@ -28,8 +28,13 @@ import { toast } from 'sonner';
 
 type CustomNodeData = { label: string };
 
+// Constants for grid alignment
+const GRID_SIZE = 20;
+const NODE_WIDTH = 120; // Fixed width that's a multiple of gridSize (120 = 6 * 20)
+
 // Custom node component
 const CustomNode = memo(({ data, selected }: NodeProps<Node<CustomNodeData>>) => {
+  
   return (
     <div
       className={`px-4 py-2 rounded-lg border transition-all duration-200 ${
@@ -37,9 +42,10 @@ const CustomNode = memo(({ data, selected }: NodeProps<Node<CustomNodeData>>) =>
           ? 'border-primary bg-primary/10 shadow-glow' 
           : 'border-border bg-card hover:border-primary/50'
       }`}
+      style={{ width: `${NODE_WIDTH}px`, minWidth: `${NODE_WIDTH}px` }}
     >
       <Handle type="target" position={Position.Top} className="!bg-primary !w-2 !h-2" />
-      <span className="text-sm font-medium text-foreground">{data.label}</span>
+      <span className="text-sm font-medium text-foreground block text-center">{data.label}</span>
       <Handle type="source" position={Position.Bottom} className="!bg-primary !w-2 !h-2" />
     </div>
   );
@@ -58,19 +64,25 @@ export const FlowCanvas = () => {
   const [editingLabel, setEditingLabel] = useState('');
   const [isConnecting, setIsConnecting] = useState(false);
   const [parseError, setParseError] = useState<string | null>(null);
+  const gridSize = GRID_SIZE;
 
   // Parse mermaid code when it changes
   useEffect(() => {
     try {
       const parsed = parseMermaidToFlow(editor.code);
-      setNodes(parsed.nodes);
+      // Snap all node positions to grid (center-aligned for handle alignment)
+      const snappedNodes = parsed.nodes.map(node => ({
+        ...node,
+        position: snapToGrid(node.position, true),
+      }));
+      setNodes(snappedNodes);
       setEdges(parsed.edges);
       setDirection(parsed.direction);
       setParseError(null);
     } catch (err) {
       setParseError('Unable to parse diagram');
     }
-  }, [editor.code, setNodes, setEdges]);
+  }, [editor.code, setNodes, setEdges, gridSize]);
 
   // Sync changes back to mermaid code (debounced)
   const syncToCode = useCallback((newNodes: Node[], newEdges: Edge[]) => {
@@ -78,21 +90,55 @@ export const FlowCanvas = () => {
     setCode(code);
   }, [direction, setCode]);
 
+  // Helper to snap position to grid
+  // For nodes, we need to account for node width to align handles to grid
+  const snapToGrid = useCallback((position: { x: number; y: number }, centerAlign: boolean = false) => {
+    if (centerAlign) {
+      // Align node center to grid, then adjust position
+      const centerX = Math.round((position.x + NODE_WIDTH / 2) / gridSize) * gridSize;
+      const centerY = Math.round((position.y + NODE_WIDTH / 2) / gridSize) * gridSize;
+      return {
+        x: centerX - NODE_WIDTH / 2,
+        y: centerY - NODE_WIDTH / 2,
+      };
+    }
+    return {
+      x: Math.round(position.x / gridSize) * gridSize,
+      y: Math.round(position.y / gridSize) * gridSize,
+    };
+  }, [gridSize]);
+
   const handleNodesChange = useCallback((changes: NodeChange<Node<CustomNodeData>>[]) => {
-    onNodesChange(changes);
+    // Apply changes and snap positions to grid (center-aligned for handle alignment)
+    const processedChanges = changes.map(change => {
+      if (change.type === 'position' && change.position) {
+        return {
+          ...change,
+          position: snapToGrid(change.position, true),
+        };
+      }
+      return change;
+    });
+    
+    onNodesChange(processedChanges);
     
     // Only sync position changes after drag ends
-    const hasDragEnd = changes.some(c => c.type === 'position' && !('dragging' in c && (c as { dragging?: boolean }).dragging));
+    const hasDragEnd = processedChanges.some(c => c.type === 'position' && !('dragging' in c && (c as { dragging?: boolean }).dragging));
     if (hasDragEnd) {
       // Use setTimeout to get updated nodes
       setTimeout(() => {
         setNodes((currentNodes: Node<CustomNodeData>[]) => {
-          syncToCode(currentNodes, edges);
-          return currentNodes;
+          // Ensure all positions are snapped (center-aligned)
+          const snappedNodes = currentNodes.map(node => ({
+            ...node,
+            position: snapToGrid(node.position, true),
+          }));
+          syncToCode(snappedNodes, edges);
+          return snappedNodes;
         });
       }, 0);
     }
-  }, [onNodesChange, edges, syncToCode, setNodes]);
+  }, [onNodesChange, edges, syncToCode, setNodes, snapToGrid]);
 
   const handleEdgesChange = useCallback((changes: EdgeChange[]) => {
     onEdgesChange(changes);
@@ -125,13 +171,13 @@ export const FlowCanvas = () => {
 
   const addNode = useCallback(() => {
     const id = `node_${Date.now()}`;
-    const gridSize = 20;
+    const initialPos = { 
+      x: 200 + Math.random() * 100, 
+      y: 200 + Math.random() * 100 
+    };
     const newNode: Node = {
       id,
-      position: { 
-        x: Math.round((200 + Math.random() * 100) / gridSize) * gridSize, 
-        y: Math.round((200 + Math.random() * 100) / gridSize) * gridSize 
-      },
+      position: snapToGrid(initialPos, true),
       data: { label: 'New Node' },
       type: 'custom',
     };
@@ -141,7 +187,7 @@ export const FlowCanvas = () => {
       return updated;
     });
     toast.success('Node added');
-  }, [setNodes, edges, syncToCode]);
+  }, [setNodes, edges, syncToCode, snapToGrid]);
 
   const deleteSelected = useCallback(() => {
     if (!selectedNode) return;
@@ -172,7 +218,17 @@ export const FlowCanvas = () => {
     toast.success('Label updated');
   }, [selectedNode, editingLabel, setNodes, edges, syncToCode]);
 
-  const gridSize = 20;
+  // Snap all nodes to grid
+  const snapAllNodesToGrid = useCallback(() => {
+    setNodes((currentNodes: Node<CustomNodeData>[]) => {
+      const updated = currentNodes.map(node => ({
+        ...node,
+        position: snapToGrid(node.position),
+      }));
+      syncToCode(updated, edges);
+      return updated;
+    });
+  }, [setNodes, edges, syncToCode, snapToGrid]);
 
   return (
     <div className="h-full w-full rounded-lg border border-border bg-background overflow-hidden">
