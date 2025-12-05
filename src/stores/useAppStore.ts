@@ -13,6 +13,11 @@ import {
   projectSchema,
   INITIAL_MERMAID
 } from '@/lib/schemas';
+import {
+  getSecureData,
+  setSecureData,
+  removeSecureData,
+} from '@/lib/secureStorage';
 
 interface AppState {
   // Editor slice
@@ -35,6 +40,8 @@ interface AppState {
   // Settings slice
   settings: Settings;
   updateSettings: (settings: Partial<Settings>) => void;
+  setSecureApiKey: (key: 'openaiApiKey' | 'groqApiKey', value: string) => Promise<void>;
+  getSecureApiKey: (key: 'openaiApiKey' | 'groqApiKey') => Promise<string | null>;
 
   // Projects slice
   projects: Project[];
@@ -81,6 +88,7 @@ const initialSettings: Settings = {
   openaiApiKey: '',
   groqApiKey: '',
   useExternalApi: false,
+  externalApiProvider: 'openai',
 };
 
 // Validation helpers
@@ -163,6 +171,36 @@ export const useAppStore = create<AppState>()(
           const validated = settingsSchema.safeParse(merged);
           if (validated.success) {
             set({ settings: validated.data });
+          }
+        },
+        setSecureApiKey: async (keyName, value) => {
+          try {
+            if (value) {
+              // Encrypt and store the API key securely
+              await setSecureData(keyName, value);
+            } else {
+              // Remove the key if empty
+              removeSecureData(keyName);
+            }
+            // Store a flag in regular settings to indicate the key exists
+            const current = get().settings;
+            set({
+              settings: {
+                ...current,
+                [keyName]: value ? '***ENCRYPTED***' : '',
+              },
+            });
+          } catch (error) {
+            console.error(`Failed to set secure API key for ${keyName}:`, error);
+            throw error;
+          }
+        },
+        getSecureApiKey: async (keyName) => {
+          try {
+            return await getSecureData(keyName);
+          } catch (error) {
+            console.error(`Failed to get secure API key for ${keyName}:`, error);
+            return null;
           }
         },
 

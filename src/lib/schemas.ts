@@ -73,6 +73,7 @@ export const settingsSchema = z.object({
   openaiApiKey: z.string().optional(),
   groqApiKey: z.string().optional(),
   useExternalApi: z.boolean().optional(),
+  externalApiProvider: z.enum(['openai', 'groq']).optional(),
 });
 
 export type Settings = z.infer<typeof settingsSchema>;

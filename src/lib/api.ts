@@ -5,6 +5,7 @@ import {
   refineResponseSchema,
   Message 
 } from './schemas';
+import { getSecureData } from './secureStorage';
 
 interface Settings {
   apiUrl?: string;
@@ -22,6 +23,20 @@ const getSettings = (): Settings => {
     } catch {}
   }
   return {};
+};
+
+const getSecureSettings = async (): Promise<Settings> => {
+  const settings = getSettings();
+  
+  // Retrieve encrypted API keys
+  const openaiApiKey = await getSecureData('openaiApiKey');
+  const groqApiKey = await getSecureData('groqApiKey');
+  
+  return {
+    ...settings,
+    openaiApiKey: openaiApiKey || undefined,
+    groqApiKey: groqApiKey || undefined,
+  };
 };
 
 const getApiUrl = () => {
@@ -67,7 +82,7 @@ const callLocalLLM = async (prompt: string, history?: Message[]): Promise<string
 
 // External API helpers
 const callOpenAI = async (prompt: string, history?: Message[]): Promise<string> => {
-  const settings = getSettings();
+  const settings = await getSecureSettings();
   const apiKey = settings.openaiApiKey;
   
   if (!apiKey) {
@@ -106,7 +121,7 @@ const callOpenAI = async (prompt: string, history?: Message[]): Promise<string> 
 };
 
 const callGroq = async (prompt: string, history?: Message[]): Promise<string> => {
-  const settings = getSettings();
+  const settings = await getSecureSettings();
   const apiKey = settings.groqApiKey;
   
   if (!apiKey) {
@@ -147,7 +162,7 @@ const callGroq = async (prompt: string, history?: Message[]): Promise<string> =>
 export const api = {
   // Get available models from LM Studio
   async getModels(): Promise<string[]> {
-    const settings = getSettings();
+    const settings = await getSecureSettings();
     
     if (settings.useExternalApi) {
       const models = [];
@@ -176,17 +191,29 @@ export const api = {
 
   // Generate with streaming using LM Studio
   async *generate(prompt: string, history?: Message[]): AsyncGenerator<string> {
-    const settings = getSettings();
+    const settings = await getSecureSettings();
 
     if (settings.useExternalApi) {
       let result: string;
+      const preferredProvider = settings.externalApiProvider || 'openai';
       
-      if (settings.openaiApiKey) {
-        result = await callOpenAI(prompt, history);
-      } else if (settings.groqApiKey) {
-        result = await callGroq(prompt, history);
-      } else {
-        throw new Error('No external API key configured');
+      try {
+        if (preferredProvider === 'openai' && settings.openaiApiKey) {
+          result = await callOpenAI(prompt, history);
+        } else if (preferredProvider === 'groq' && settings.groqApiKey) {
+          result = await callGroq(prompt, history);
+        } else {
+          // Fallback to the other provider if preferred one is not available
+          if (settings.openaiApiKey) {
+            result = await callOpenAI(prompt, history);
+          } else if (settings.groqApiKey) {
+            result = await callGroq(prompt, history);
+          } else {
+            throw new Error('No external API key configured');
+          }
+        }
+      } catch (error) {
+        throw error;
       }
       
       yield result;
@@ -200,16 +227,25 @@ export const api = {
 
   // Explain diagram
   async explain(mermaid: string): Promise<string> {
-    const settings = getSettings();
+    const settings = await getSecureSettings();
     const prompt = `Explain this Mermaid diagram in detail:\n\n${mermaid}`;
 
     if (settings.useExternalApi) {
-      if (settings.openaiApiKey) {
+      const preferredProvider = settings.externalApiProvider || 'openai';
+      
+      if (preferredProvider === 'openai' && settings.openaiApiKey) {
         return await callOpenAI(prompt);
-      } else if (settings.groqApiKey) {
+      } else if (preferredProvider === 'groq' && settings.groqApiKey) {
         return await callGroq(prompt);
       } else {
-        throw new Error('No external API key configured');
+        // Fallback to the other provider if preferred one is not available
+        if (settings.openaiApiKey) {
+          return await callOpenAI(prompt);
+        } else if (settings.groqApiKey) {
+          return await callGroq(prompt);
+        } else {
+          throw new Error('No external API key configured');
+        }
       }
     }
 
@@ -219,18 +255,27 @@ export const api = {
 
   // Refine diagram
   async refine(mermaid: string, instruction: string): Promise<string> {
-    const settings = getSettings();
+    const settings = await getSecureSettings();
     const prompt = `Refine this Mermaid diagram according to the instruction.\n\nCurrent diagram:\n${mermaid}\n\nInstruction: ${instruction}\n\nProvide only the updated Mermaid code, nothing else.`;
 
     let result: string;
 
     if (settings.useExternalApi) {
-      if (settings.openaiApiKey) {
+      const preferredProvider = settings.externalApiProvider || 'openai';
+      
+      if (preferredProvider === 'openai' && settings.openaiApiKey) {
         result = await callOpenAI(prompt);
-      } else if (settings.groqApiKey) {
+      } else if (preferredProvider === 'groq' && settings.groqApiKey) {
         result = await callGroq(prompt);
       } else {
-        throw new Error('No external API key configured');
+        // Fallback to the other provider if preferred one is not available
+        if (settings.openaiApiKey) {
+          result = await callOpenAI(prompt);
+        } else if (settings.groqApiKey) {
+          result = await callGroq(prompt);
+        } else {
+          throw new Error('No external API key configured');
+        }
       }
     } else {
       // Use Local LLM

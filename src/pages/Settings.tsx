@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '@/stores/useAppStore';
 import { Button } from '@/components/ui/button';
@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
   ArrowLeft,
   Server,
@@ -30,28 +31,59 @@ import {
 
 const Settings = () => {
   const navigate = useNavigate();
-  const { settings, updateSettings, projects, editor } = useAppStore();
+  const { settings, updateSettings, setSecureApiKey, getSecureApiKey, projects, editor } = useAppStore();
   const [apiUrl, setApiUrl] = useState(settings.apiUrl);
-  const [openaiApiKey, setOpenaiApiKey] = useState(settings.openaiApiKey || '');
-  const [groqApiKey, setGroqApiKey] = useState(settings.groqApiKey || '');
+  const [openaiApiKey, setOpenaiApiKey] = useState('');
+  const [groqApiKey, setGroqApiKey] = useState('');
   const [confirmClearOpen, setConfirmClearOpen] = useState(false);
   const [testingLocalLLM, setTestingLocalLLM] = useState(false);
   const [testingOpenAI, setTestingOpenAI] = useState(false);
   const [testingGroq, setTestingGroq] = useState(false);
+  const [loadingKeys, setLoadingKeys] = useState(true);
+  const [externalApiProvider, setExternalApiProvider] = useState<'openai' | 'groq'>(
+    settings.externalApiProvider || 'openai'
+  );
+
+  // Load encrypted API keys on mount
+  useEffect(() => {
+    const loadApiKeys = async () => {
+      try {
+        const openai = await getSecureApiKey('openaiApiKey');
+        const groq = await getSecureApiKey('groqApiKey');
+        setOpenaiApiKey(openai || '');
+        setGroqApiKey(groq || '');
+      } catch (error) {
+        console.error('Failed to load API keys:', error);
+      } finally {
+        setLoadingKeys(false);
+      }
+    };
+    loadApiKeys();
+  }, [getSecureApiKey]);
 
   const handleSaveApiUrl = () => {
     updateSettings({ apiUrl });
     toast.success('API URL saved');
   };
 
-  const handleSaveOpenAIKey = () => {
-    updateSettings({ openaiApiKey });
-    toast.success('OpenAI API key saved');
+  const handleSaveOpenAIKey = async () => {
+    try {
+      await setSecureApiKey('openaiApiKey', openaiApiKey);
+      toast.success('OpenAI API key saved securely');
+    } catch (error) {
+      toast.error('Failed to save OpenAI API key');
+      console.error(error);
+    }
   };
 
-  const handleSaveGroqKey = () => {
-    updateSettings({ groqApiKey });
-    toast.success('Groq API key saved');
+  const handleSaveGroqKey = async () => {
+    try {
+      await setSecureApiKey('groqApiKey', groqApiKey);
+      toast.success('Groq API key saved securely');
+    } catch (error) {
+      toast.error('Failed to save Groq API key');
+      console.error(error);
+    }
   };
 
   const handleTestLocalLLM = async () => {
@@ -283,15 +315,35 @@ const Settings = () => {
 
         {/* External API Keys */}
         <section className="glass rounded-xl p-6 space-y-4">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 rounded-lg bg-primary/10">
-              <Server className="h-5 w-5 text-primary" />
+          <div className="flex items-center justify-between gap-3 mb-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <Server className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <h2 className="font-semibold">External API Keys</h2>
+                <p className="text-sm text-muted-foreground">
+                  Configure API keys for external AI providers
+                </p>
+              </div>
             </div>
-            <div>
-              <h2 className="font-semibold">External API Keys</h2>
-              <p className="text-sm text-muted-foreground">
-                Configure API keys for external AI providers
-              </p>
+            
+            {/* Provider Toggle */}
+            <div className="flex items-center gap-3 ml-auto">
+              <Label className="text-sm font-normal">Preferred Provider:</Label>
+              <RadioGroup value={externalApiProvider} onValueChange={(value) => {
+                setExternalApiProvider(value as 'openai' | 'groq');
+                updateSettings({ externalApiProvider: value as 'openai' | 'groq' });
+              }}>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="openai" id="provider-openai" />
+                  <Label htmlFor="provider-openai" className="font-normal cursor-pointer">OpenAI</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="groq" id="provider-groq" />
+                  <Label htmlFor="provider-groq" className="font-normal cursor-pointer">Groq</Label>
+                </div>
+              </RadioGroup>
             </div>
           </div>
 
@@ -306,12 +358,18 @@ const Settings = () => {
                   value={openaiApiKey}
                   onChange={(e) => setOpenaiApiKey(e.target.value)}
                   placeholder="sk-..."
+                  disabled={loadingKeys}
                 />
-                <Button onClick={handleSaveOpenAIKey}>Save</Button>
+                <Button 
+                  onClick={handleSaveOpenAIKey}
+                  disabled={openaiApiKey.length < 16 || loadingKeys}
+                >
+                  Save
+                </Button>
                 <Button
                   variant="outline"
                   onClick={handleTestOpenAI}
-                  disabled={testingOpenAI}
+                  disabled={testingOpenAI || openaiApiKey.length < 16 || loadingKeys}
                 >
                   {testingOpenAI ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -322,6 +380,11 @@ const Settings = () => {
               </div>
               <p className="text-xs text-muted-foreground">
                 Will use GPT-4o-mini (cheapest model)
+                {openaiApiKey.length > 0 && openaiApiKey.length < 16 && (
+                  <span className="text-destructive ml-2">
+                    (API key must be at least 16 characters)
+                  </span>
+                )}
               </p>
             </div>
 
@@ -335,12 +398,18 @@ const Settings = () => {
                   value={groqApiKey}
                   onChange={(e) => setGroqApiKey(e.target.value)}
                   placeholder="gsk_..."
+                  disabled={loadingKeys}
                 />
-                <Button onClick={handleSaveGroqKey}>Save</Button>
+                <Button 
+                  onClick={handleSaveGroqKey}
+                  disabled={groqApiKey.length < 16 || loadingKeys}
+                >
+                  Save
+                </Button>
                 <Button
                   variant="outline"
                   onClick={handleTestGroq}
-                  disabled={testingGroq}
+                  disabled={testingGroq || groqApiKey.length < 16 || loadingKeys}
                 >
                   {testingGroq ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -351,6 +420,11 @@ const Settings = () => {
               </div>
               <p className="text-xs text-muted-foreground">
                 Fast and cost-effective inference
+                {groqApiKey.length > 0 && groqApiKey.length < 16 && (
+                  <span className="text-destructive ml-2">
+                    (API key must be at least 16 characters)
+                  </span>
+                )}
               </p>
             </div>
           </div>
