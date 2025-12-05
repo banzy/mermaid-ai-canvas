@@ -10,7 +10,10 @@ The Mermaid diagram preview supports intuitive controls for navigation and zoomi
 - **Horizontal Scroll**: Moves diagram left/right (two-finger scroll on trackpad)
 
 ### Zooming
-- **Ctrl/Cmd + Scroll**: Zoom in and out
+- **Shift + Scroll**: Zoom in and out
+  - Scroll up: Zoom in (up to 300%)
+  - Scroll down: Zoom out (down to 25%)
+- **Ctrl/Cmd + Scroll**: Also works for zooming (alternative)
   - Scroll up: Zoom in (up to 300%)
   - Scroll down: Zoom out (down to 25%)
 - **Zoom Buttons**: Use the toolbar buttons for discrete zoom steps
@@ -43,7 +46,8 @@ The control toolbar is positioned in the **top-right corner** of the preview are
 
 ### For Desktop Users
 - **Two-finger trackpad scroll**: Natural panning gesture
-- **Ctrl/Cmd + scroll**: Familiar zoom shortcut
+- **Shift + scroll**: Convenient zoom (Shift is on left side of keyboard)
+- **Ctrl/Cmd + scroll**: Alternative zoom shortcut (familiar from web browsers)
 - **Click and drag**: Quick manual pan when needed
 
 ### For Tablet/Trackpad Users
@@ -57,16 +61,16 @@ File: `src/components/editor/MermaidPreview.tsx`
 
 ### Scroll Behavior
 ```typescript
-// Regular scroll: Pan the diagram
-setPosition(prev => ({
-  x: prev.x - e.deltaX * panSpeed,
-  y: prev.y - e.deltaY * panSpeed,
-}));
-
-// Ctrl/Cmd + scroll: Zoom
-if (e.ctrlKey || e.metaKey) {
+// Shift/Ctrl/Cmd + scroll: Zoom
+if (e.ctrlKey || e.metaKey || e.shiftKey) {
   const delta = e.deltaY > 0 ? -0.1 : 0.1;
   setScale(prev => Math.max(0.25, Math.min(3, prev + delta)));
+} else {
+  // Regular scroll: Pan the diagram
+  setPosition(prev => ({
+    x: prev.x - e.deltaX * panSpeed,
+    y: prev.y - e.deltaY * panSpeed,
+  }));
 }
 ```
 

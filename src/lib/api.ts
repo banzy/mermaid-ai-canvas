@@ -1,9 +1,9 @@
 import { z } from 'zod';
-import { 
-  modelsResponseSchema, 
-  explainResponseSchema, 
+import {
+  modelsResponseSchema,
+  explainResponseSchema,
   refineResponseSchema,
-  Message 
+  Message,
 } from './schemas';
 import { getSecureData } from './secureStorage';
 
@@ -27,11 +27,11 @@ const getSettings = (): Settings => {
 
 const getSecureSettings = async (): Promise<Settings> => {
   const settings = getSettings();
-  
+
   // Retrieve encrypted API keys
   const openaiApiKey = await getSecureData('openaiApiKey');
   const groqApiKey = await getSecureData('groqApiKey');
-  
+
   return {
     ...settings,
     openaiApiKey: openaiApiKey || undefined,
@@ -49,66 +49,124 @@ const getApiUrl = () => {
 };
 
 // Local LLM helper (LM Studio uses OpenAI-compatible API)
-const callLocalLLM = async (prompt: string, history?: Message[]): Promise<string> => {
+const callLocalLLM = async (
+  prompt: string,
+  history?: Message[]
+): Promise<string> => {
+  // First, get available models to use one
+  let model = '';
+  try {
+    const modelsResponse = await fetch(`${getApiUrl()}/v1/models`);
+    if (modelsResponse.ok) {
+      const modelsData = await modelsResponse.json();
+      if (
+        modelsData.data &&
+        Array.isArray(modelsData.data) &&
+        modelsData.data.length > 0
+      ) {
+        model = modelsData.data[0].id;
+      } else if (
+        modelsData.models &&
+        Array.isArray(modelsData.models) &&
+        modelsData.models.length > 0
+      ) {
+        model = modelsData.models[0];
+      }
+    }
+  } catch (error) {
+    console.warn(
+      'Failed to fetch models, proceeding without model parameter:',
+      error
+    );
+  }
+
   const messages = [
-    { role: 'system', content: 'You are a helpful assistant that specializes in creating and explaining Mermaid diagrams. When asked to create or modify diagrams, provide only the Mermaid code unless asked for explanations.' },
-    ...(history || []).map(msg => ({
+    {
+      role: 'system',
+      content:
+        'You are a helpful assistant that specializes in creating and explaining Mermaid diagrams. When asked to create or modify diagrams, provide only the Mermaid code unless asked for explanations.',
+    },
+    ...(history || []).map((msg) => ({
       role: msg.role,
-      content: msg.content
+      content: msg.content,
     })),
-    { role: 'user', content: prompt }
+    { role: 'user', content: prompt },
   ];
+
+  const requestBody: any = {
+    messages,
+    temperature: 0.7,
+    stream: false,
+  };
+
+  // Include model if we found one (LM Studio requires it)
+  if (model) {
+    requestBody.model = model;
+  }
 
   const response = await fetch(`${getApiUrl()}/v1/chat/completions`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      messages,
-      temperature: 0.7,
-      stream: false,
-    })
+    body: JSON.stringify(requestBody),
   });
 
   if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`Local LLM API error: ${error}`);
+    const errorText = await response.text();
+    let errorMessage = `Local LLM API error: HTTP ${response.status}`;
+    try {
+      const errorData = JSON.parse(errorText);
+      errorMessage += ` - ${errorData.error?.message || errorText}`;
+    } catch {
+      errorMessage += ` - ${errorText.substring(0, 200)}`;
+    }
+    throw new Error(errorMessage);
   }
 
   const data = await response.json();
-  return data.choices[0]?.message?.content || '';
+  if (!data.choices || !data.choices[0]?.message?.content) {
+    throw new Error('Invalid response format from local LLM');
+  }
+  return data.choices[0].message.content;
 };
 
 // External API helpers
-const callOpenAI = async (prompt: string, history?: Message[]): Promise<string> => {
+const callOpenAI = async (
+  prompt: string,
+  history?: Message[]
+): Promise<string> => {
   const settings = await getSecureSettings();
   const apiKey = settings.openaiApiKey;
-  
+
   if (!apiKey) {
     throw new Error('OpenAI API key not configured');
   }
 
   const messages = [
-    { role: 'system', content: 'You are a helpful assistant that specializes in creating and explaining Mermaid diagrams. When asked to create or modify diagrams, provide only the Mermaid code unless asked for explanations.' },
-    ...(history || []).map(msg => ({
+    {
+      role: 'system',
+      content:
+        'You are a helpful assistant that specializes in creating and explaining Mermaid diagrams. When asked to create or modify diagrams, provide only the Mermaid code unless asked for explanations.',
+    },
+    ...(history || []).map((msg) => ({
       role: msg.role,
-      content: msg.content
+      content: msg.content,
     })),
-    { role: 'user', content: prompt }
+    { role: 'user', content: prompt },
   ];
 
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`
+      Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
       model: 'gpt-4o-mini',
       messages,
       temperature: 0.7,
-    })
+    }),
   });
 
   if (!response.ok) {
@@ -120,35 +178,45 @@ const callOpenAI = async (prompt: string, history?: Message[]): Promise<string> 
   return data.choices[0]?.message?.content || '';
 };
 
-const callGroq = async (prompt: string, history?: Message[]): Promise<string> => {
+const callGroq = async (
+  prompt: string,
+  history?: Message[]
+): Promise<string> => {
   const settings = await getSecureSettings();
   const apiKey = settings.groqApiKey;
-  
+
   if (!apiKey) {
     throw new Error('Groq API key not configured');
   }
 
   const messages = [
-    { role: 'system', content: 'You are a helpful assistant that specializes in creating and explaining Mermaid diagrams. When asked to create or modify diagrams, provide only the Mermaid code unless asked for explanations.' },
-    ...(history || []).map(msg => ({
+    {
+      role: 'system',
+      content:
+        'You are a helpful assistant that specializes in creating and explaining Mermaid diagrams. When asked to create or modify diagrams, provide only the Mermaid code unless asked for explanations.',
+    },
+    ...(history || []).map((msg) => ({
       role: msg.role,
-      content: msg.content
+      content: msg.content,
     })),
-    { role: 'user', content: prompt }
+    { role: 'user', content: prompt },
   ];
 
-  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`
-    },
-    body: JSON.stringify({
-      model: 'llama-3.3-70b-versatile',
-      messages,
-      temperature: 0.7,
-    })
-  });
+  const response = await fetch(
+    'https://api.groq.com/openai/v1/chat/completions',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        messages,
+        temperature: 0.7,
+      }),
+    }
+  );
 
   if (!response.ok) {
     const error = await response.text();
@@ -163,7 +231,7 @@ export const api = {
   // Get available models from LM Studio
   async getModels(): Promise<string[]> {
     const settings = await getSecureSettings();
-    
+
     if (settings.useExternalApi) {
       const models = [];
       if (settings.openaiApiKey) models.push('OpenAI GPT-4o-mini');
@@ -175,17 +243,17 @@ export const api = {
     const response = await fetch(`${getApiUrl()}/v1/models`);
     if (!response.ok) throw new Error('Failed to fetch models');
     const data = await response.json();
-    
+
     // LM Studio returns { data: [{ id: "model-name", ... }] }
     if (data.data && Array.isArray(data.data)) {
       return data.data.map((model: { id: string }) => model.id);
     }
-    
+
     // Fallback for other formats
     if (data.models && Array.isArray(data.models)) {
       return data.models;
     }
-    
+
     return [];
   },
 
@@ -196,7 +264,7 @@ export const api = {
     if (settings.useExternalApi) {
       let result: string;
       const preferredProvider = settings.externalApiProvider || 'openai';
-      
+
       try {
         if (preferredProvider === 'openai' && settings.openaiApiKey) {
           result = await callOpenAI(prompt, history);
@@ -215,7 +283,7 @@ export const api = {
       } catch (error) {
         throw error;
       }
-      
+
       yield result;
       return;
     }
@@ -232,7 +300,7 @@ export const api = {
 
     if (settings.useExternalApi) {
       const preferredProvider = settings.externalApiProvider || 'openai';
-      
+
       if (preferredProvider === 'openai' && settings.openaiApiKey) {
         return await callOpenAI(prompt);
       } else if (preferredProvider === 'groq' && settings.groqApiKey) {
@@ -262,7 +330,7 @@ export const api = {
 
     if (settings.useExternalApi) {
       const preferredProvider = settings.externalApiProvider || 'openai';
-      
+
       if (preferredProvider === 'openai' && settings.openaiApiKey) {
         result = await callOpenAI(prompt);
       } else if (preferredProvider === 'groq' && settings.groqApiKey) {

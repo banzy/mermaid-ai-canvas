@@ -3,37 +3,37 @@ import { useAppStore } from '@/stores/useAppStore';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { 
-  Send, 
-  Sparkles, 
-  ChevronDown, 
-  ChevronUp, 
-  Copy, 
-  Replace, 
+import {
+  Send,
+  Sparkles,
+  ChevronDown,
+  ChevronUp,
+  Copy,
+  Replace,
   Trash2,
   Loader2,
   Bot,
-  User
+  User,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
 export const AIPanel = () => {
-  const { 
-    chat, 
+  const {
+    chat,
     editor,
-    isAIPanelOpen, 
+    isAIPanelOpen,
     isPanelMinimized,
     aiPanelHeight,
     setAIPanelHeight,
     setIsPanelMinimized,
-    addMessage, 
-    updateLastMessage, 
+    addMessage,
+    updateLastMessage,
     setIsStreaming,
     setCode,
     clearChat,
   } = useAppStore();
-  
+
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -72,8 +72,12 @@ export const AIPanel = () => {
         updateLastMessage(fullContent);
       }
     } catch (error) {
-      toast.error('Failed to generate response');
-      updateLastMessage('Sorry, I encountered an error. Please check your API connection.');
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error occurred';
+      toast.error(`Failed to generate response: ${errorMessage}`);
+      updateLastMessage(
+        `Sorry, I encountered an error: ${errorMessage}\n\nPlease check your API connection and settings.`
+      );
     } finally {
       setIsStreaming(false);
     }
@@ -129,7 +133,7 @@ export const AIPanel = () => {
   if (!isAIPanelOpen) return null;
 
   return (
-    <div 
+    <div
       className="flex flex-col border-t border-border bg-card animate-slide-up"
       style={{ height: isPanelMinimized ? 48 : aiPanelHeight }}
     >
@@ -189,9 +193,12 @@ export const AIPanel = () => {
                 <div className="rounded-full bg-primary/10 p-4 mb-3">
                   <Sparkles className="h-8 w-8 text-primary" />
                 </div>
-                <h3 className="font-medium text-foreground mb-1">AI-Powered Diagram Assistant</h3>
+                <h3 className="font-medium text-foreground mb-1">
+                  AI-Powered Diagram Assistant
+                </h3>
                 <p className="text-sm text-muted-foreground max-w-sm">
-                  Ask me to create, modify, or explain Mermaid diagrams. I can help with flowcharts, sequences, and more.
+                  Ask me to create, modify, or explain Mermaid diagrams. I can
+                  help with flowcharts, sequences, and more.
                 </p>
               </div>
             ) : (
@@ -199,7 +206,7 @@ export const AIPanel = () => {
                 <div
                   key={message.id}
                   className={cn(
-                    "flex gap-3 animate-fade-in",
+                    'flex gap-3 animate-fade-in',
                     message.role === 'user' ? 'justify-end' : 'justify-start'
                   )}
                 >
@@ -210,35 +217,38 @@ export const AIPanel = () => {
                   )}
                   <div
                     className={cn(
-                      "max-w-[80%] rounded-xl px-4 py-2.5",
+                      'max-w-[80%] rounded-xl px-4 py-2.5',
                       message.role === 'user'
                         ? 'bg-primary text-primary-foreground'
                         : 'glass'
                     )}
                   >
-                    <div className="text-sm whitespace-pre-wrap">{message.content}</div>
-                    {message.role === 'assistant' && extractMermaidCode(message.content) && (
-                      <div className="mt-3 flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          className="h-7 text-xs"
-                          onClick={() => handleReplace(message.content)}
-                        >
-                          <Replace className="mr-1 h-3 w-3" />
-                          Replace
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          className="h-7 text-xs"
-                          onClick={() => handleCopy(message.content)}
-                        >
-                          <Copy className="mr-1 h-3 w-3" />
-                          Copy
-                        </Button>
-                      </div>
-                    )}
+                    <div className="text-sm whitespace-pre-wrap">
+                      {message.content}
+                    </div>
+                    {message.role === 'assistant' &&
+                      extractMermaidCode(message.content) && (
+                        <div className="mt-3 flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            className="h-7 text-xs"
+                            onClick={() => handleReplace(message.content)}
+                          >
+                            <Replace className="mr-1 h-3 w-3" />
+                            Replace
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            className="h-7 text-xs"
+                            onClick={() => handleCopy(message.content)}
+                          >
+                            <Copy className="mr-1 h-3 w-3" />
+                            Copy
+                          </Button>
+                        </div>
+                      )}
                   </div>
                   {message.role === 'user' && (
                     <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-secondary">

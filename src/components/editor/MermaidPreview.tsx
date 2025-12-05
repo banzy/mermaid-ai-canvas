@@ -62,16 +62,35 @@ export const MermaidPreview = () => {
   const handleWheel = useCallback((e: React.WheelEvent) => {
     e.preventDefault();
     
-    // Zoom with Ctrl/Cmd + scroll or just scroll (if not over a scrollable element)
-    if (e.ctrlKey || e.metaKey) {
-      const delta = e.deltaY > 0 ? -0.1 : 0.1;
-      setScale(prev => Math.max(0.25, Math.min(3, prev + delta)));
+    // Zoom with Shift + scroll
+    if (e.shiftKey) {
+      setScale(prev => {
+        let newScale = prev;
+        if (e.deltaY > 0) {
+          // Scroll down = zoom in
+          newScale = prev + 0.2;
+        } else {
+          // Scroll up = zoom out
+          newScale = prev - 0.2;
+        }
+        return Math.max(0.25, Math.min(3, newScale));
+      });
+    } else if (e.ctrlKey || e.metaKey) {
+      // Ctrl/Cmd + scroll also zooms
+      setScale(prev => {
+        let newScale = prev;
+        if (e.deltaY > 0) {
+          newScale = prev + 0.2;
+        } else {
+          newScale = prev - 0.2;
+        }
+        return Math.max(0.25, Math.min(3, newScale));
+      });
     } else {
       // Regular scroll wheel for panning
-      const panSpeed = 1;
       setPosition(prev => ({
-        x: prev.x - e.deltaX * panSpeed,
-        y: prev.y - e.deltaY * panSpeed,
+        x: prev.x - e.deltaX,
+        y: prev.y - e.deltaY,
       }));
     }
   }, []);
@@ -99,8 +118,8 @@ export const MermaidPreview = () => {
     setPosition({ x: 0, y: 0 });
   };
 
-  const zoomIn = () => setScale(prev => Math.min(3, prev + 0.25));
-  const zoomOut = () => setScale(prev => Math.max(0.25, prev - 0.25));
+  const zoomIn = () => setScale(prev => Math.min(3, prev + 0.2));
+  const zoomOut = () => setScale(prev => Math.max(0.25, prev - 0.2));
 
   const exportSVG = () => {
     if (!svgContent) return;
