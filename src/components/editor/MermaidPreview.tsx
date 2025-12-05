@@ -60,10 +60,19 @@ export const MermaidPreview = () => {
   }, [renderDiagram]);
 
   const handleWheel = useCallback((e: React.WheelEvent) => {
+    e.preventDefault();
+    
+    // Zoom with Ctrl/Cmd + scroll or just scroll (if not over a scrollable element)
     if (e.ctrlKey || e.metaKey) {
-      e.preventDefault();
       const delta = e.deltaY > 0 ? -0.1 : 0.1;
       setScale(prev => Math.max(0.25, Math.min(3, prev + delta)));
+    } else {
+      // Regular scroll wheel for panning
+      const panSpeed = 1;
+      setPosition(prev => ({
+        x: prev.x - e.deltaX * panSpeed,
+        y: prev.y - e.deltaY * panSpeed,
+      }));
     }
   }, []);
 
