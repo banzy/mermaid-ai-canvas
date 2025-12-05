@@ -49,7 +49,8 @@ export const MermaidPreview = () => {
       setSvgContent(svg);
       setError(null);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Invalid Mermaid syntax';
+      const message =
+        err instanceof Error ? err.message : 'Invalid Mermaid syntax';
       setError(message);
     }
   }, [editor.code]);
@@ -61,38 +62,13 @@ export const MermaidPreview = () => {
 
   const handleWheel = useCallback((e: React.WheelEvent) => {
     e.preventDefault();
-    
-    // Zoom with Shift + scroll
-    if (e.shiftKey) {
-      setScale(prev => {
-        let newScale = prev;
-        if (e.deltaY > 0) {
-          // Scroll down = zoom in
-          newScale = prev + 0.2;
-        } else {
-          // Scroll up = zoom out
-          newScale = prev - 0.2;
-        }
-        return Math.max(0.25, Math.min(3, newScale));
-      });
-    } else if (e.ctrlKey || e.metaKey) {
-      // Ctrl/Cmd + scroll also zooms
-      setScale(prev => {
-        let newScale = prev;
-        if (e.deltaY > 0) {
-          newScale = prev + 0.2;
-        } else {
-          newScale = prev - 0.2;
-        }
-        return Math.max(0.25, Math.min(3, newScale));
-      });
-    } else {
-      // Regular scroll wheel for panning
-      setPosition(prev => ({
-        x: prev.x - e.deltaX,
-        y: prev.y - e.deltaY,
-      }));
-    }
+
+    // Always zoom with the wheel, matching the editor behavior
+    setScale((prev) => {
+      const delta = e.deltaY > 0 ? 0.2 : -0.2;
+      const newScale = prev + delta;
+      return Math.max(0.25, Math.min(3, newScale));
+    });
   }, []);
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -118,8 +94,8 @@ export const MermaidPreview = () => {
     setPosition({ x: 0, y: 0 });
   };
 
-  const zoomIn = () => setScale(prev => Math.min(3, prev + 0.2));
-  const zoomOut = () => setScale(prev => Math.max(0.25, prev - 0.2));
+  const zoomIn = () => setScale((prev) => Math.min(3, prev + 0.2));
+  const zoomOut = () => setScale((prev) => Math.max(0.25, prev - 0.2));
 
   const exportSVG = () => {
     if (!svgContent) return;
@@ -137,19 +113,39 @@ export const MermaidPreview = () => {
     <div className="relative h-full w-full overflow-hidden rounded-lg border border-border bg-background">
       {/* Toolbar */}
       <div className="absolute right-3 top-3 z-10 flex gap-1 rounded-lg glass p-1">
-        <Button variant="ghost" size="icon" onClick={zoomOut} className="h-8 w-8">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={zoomOut}
+          className="h-8 w-8"
+        >
           <ZoomOut className="h-4 w-4" />
         </Button>
         <span className="flex items-center px-2 text-xs text-muted-foreground font-mono">
           {Math.round(scale * 100)}%
         </span>
-        <Button variant="ghost" size="icon" onClick={zoomIn} className="h-8 w-8">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={zoomIn}
+          className="h-8 w-8"
+        >
           <ZoomIn className="h-4 w-4" />
         </Button>
-        <Button variant="ghost" size="icon" onClick={resetView} className="h-8 w-8">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={resetView}
+          className="h-8 w-8"
+        >
           <RotateCcw className="h-4 w-4" />
         </Button>
-        <Button variant="ghost" size="icon" onClick={exportSVG} className="h-8 w-8">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={exportSVG}
+          className="h-8 w-8"
+        >
           <Download className="h-4 w-4" />
         </Button>
       </div>
@@ -157,7 +153,9 @@ export const MermaidPreview = () => {
       {/* Canvas */}
       <div
         ref={containerRef}
-        className={`h-full w-full overflow-hidden ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+        className={`h-full w-full overflow-hidden ${
+          isDragging ? 'cursor-grabbing' : 'cursor-grab'
+        }`}
         onWheel={handleWheel}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
@@ -168,11 +166,23 @@ export const MermaidPreview = () => {
           <div className="flex h-full items-center justify-center p-8">
             <div className="glass-intense max-w-md rounded-xl p-6 text-center">
               <div className="mb-3 text-destructive">
-                <svg className="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                <svg
+                  className="mx-auto h-12 w-12"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                  />
                 </svg>
               </div>
-              <h3 className="mb-2 font-semibold text-foreground">Syntax Error</h3>
+              <h3 className="mb-2 font-semibold text-foreground">
+                Syntax Error
+              </h3>
               <p className="text-sm text-muted-foreground font-mono">{error}</p>
             </div>
           </div>
@@ -196,7 +206,7 @@ export const MermaidPreview = () => {
       </div>
 
       {/* Grid background */}
-      <div 
+      <div
         className="pointer-events-none absolute inset-0 opacity-[0.02]"
         style={{
           backgroundImage: `
