@@ -57,24 +57,50 @@ const Settings = () => {
   const handleTestLocalLLM = async () => {
     setTestingLocalLLM(true);
     try {
+      // Default to LM Studio's default port (1234)
       const url =
-        apiUrl || import.meta.env.VITE_API_URL || 'http://localhost:8000';
-      const response = await fetch(`${url}/api/models`, {
+        apiUrl || import.meta.env.VITE_API_URL || 'http://localhost:1234';
+      // Use LM Studio's OpenAI-compatible /v1/models endpoint
+      const response = await fetch(`${url}/v1/models`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
       });
 
+      // Get response text first to show in toast
+      const responseText = await response.text();
+      
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        toast.error(
+          `HTTP ${response.status}: ${response.statusText}\nResponse: ${responseText.substring(0, 200)}`
+        );
+        return;
       }
 
-      const data = await response.json();
-      if (data.models && Array.isArray(data.models)) {
+      // Try to parse as JSON
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (parseError) {
+        toast.warning(
+          `Response received but not valid JSON:\n${responseText.substring(0, 200)}`
+        );
+        return;
+      }
+
+      // LM Studio returns { data: [{ id: "model-name", ... }] }
+      if (data.data && Array.isArray(data.data)) {
+        const modelNames = data.data.map((m: { id: string }) => m.id);
         toast.success(
-          `Connection successful! Found ${data.models.length} model(s)`
+          `Connection successful! Found ${modelNames.length} model(s): ${modelNames.join(', ')}`
+        );
+      } else if (data.models && Array.isArray(data.models)) {
+        toast.success(
+          `Connection successful! Found ${data.models.length} model(s): ${data.models.join(', ')}`
         );
       } else {
-        toast.success('Connection successful!');
+        toast.success(
+          `Connection successful!\nResponse: ${JSON.stringify(data).substring(0, 200)}`
+        );
       }
     } catch (error) {
       const message =

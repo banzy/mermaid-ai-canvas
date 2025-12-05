@@ -29,7 +29,40 @@ const getApiUrl = () => {
   if (settings.apiUrl) {
     return settings.apiUrl;
   }
-  return import.meta.env.VITE_API_URL || 'http://localhost:8000';
+  // Default to LM Studio's default port
+  return import.meta.env.VITE_API_URL || 'http://localhost:1234';
+};
+
+// Local LLM helper (LM Studio uses OpenAI-compatible API)
+const callLocalLLM = async (prompt: string, history?: Message[]): Promise<string> => {
+  const messages = [
+    { role: 'system', content: 'You are a helpful assistant that specializes in creating and explaining Mermaid diagrams. When asked to create or modify diagrams, provide only the Mermaid code unless asked for explanations.' },
+    ...(history || []).map(msg => ({
+      role: msg.role,
+      content: msg.content
+    })),
+    { role: 'user', content: prompt }
+  ];
+
+  const response = await fetch(`${getApiUrl()}/v1/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      messages,
+      temperature: 0.7,
+      stream: false,
+    })
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Local LLM API error: ${error}`);
+  }
+
+  const data = await response.json();
+  return data.choices[0]?.message?.content || '';
 };
 
 // External API helpers
@@ -42,6 +75,7 @@ const callOpenAI = async (prompt: string, history?: Message[]): Promise<string> 
   }
 
   const messages = [
+    { role: 'system', content: 'You are a helpful assistant that specializes in creating and explaining Mermaid diagrams. When asked to create or modify diagrams, provide only the Mermaid code unless asked for explanations.' },
     ...(history || []).map(msg => ({
       role: msg.role,
       content: msg.content
@@ -80,6 +114,7 @@ const callGroq = async (prompt: string, history?: Message[]): Promise<string> =>
   }
 
   const messages = [
+    { role: 'system', content: 'You are a helpful assistant that specializes in creating and explaining Mermaid diagrams. When asked to create or modify diagrams, provide only the Mermaid code unless asked for explanations.' },
     ...(history || []).map(msg => ({
       role: msg.role,
       content: msg.content
@@ -110,7 +145,7 @@ const callGroq = async (prompt: string, history?: Message[]): Promise<string> =>
 };
 
 export const api = {
-  // Get available models
+  // Get available models from LM Studio
   async getModels(): Promise<string[]> {
     const settings = getSettings();
     
@@ -121,19 +156,29 @@ export const api = {
       return models;
     }
 
-    const response = await fetch(`${getApiUrl()}/api/models`);
+    // Use LM Studio's OpenAI-compatible /v1/models endpoint
+    const response = await fetch(`${getApiUrl()}/v1/models`);
     if (!response.ok) throw new Error('Failed to fetch models');
     const data = await response.json();
-    const validated = modelsResponseSchema.parse(data);
-    return validated.models;
+    
+    // LM Studio returns { data: [{ id: "model-name", ... }] }
+    if (data.data && Array.isArray(data.data)) {
+      return data.data.map((model: { id: string }) => model.id);
+    }
+    
+    // Fallback for other formats
+    if (data.models && Array.isArray(data.models)) {
+      return data.models;
+    }
+    
+    return [];
   },
 
-  // Generate with streaming
+  // Generate with streaming using LM Studio
   async *generate(prompt: string, history?: Message[]): AsyncGenerator<string> {
     const settings = getSettings();
 
     if (settings.useExternalApi) {
-      // Use external API (non-streaming for simplicity)
       let result: string;
       
       if (settings.openaiApiKey) {
@@ -148,48 +193,17 @@ export const api = {
       return;
     }
 
-    // Use internal API with streaming
-    const response = await fetch(`${getApiUrl()}/api/generate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt, history }),
-    });
-
-    if (!response.ok) throw new Error('Failed to generate');
-    if (!response.body) throw new Error('No response body');
-
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      
-      const chunk = decoder.decode(value, { stream: true });
-      const lines = chunk.split('\n');
-      
-      for (const line of lines) {
-        if (line.startsWith('data: ')) {
-          const data = line.slice(6);
-          if (data === '[DONE]') return;
-          try {
-            const parsed = JSON.parse(data);
-            if (parsed.content) yield parsed.content;
-          } catch {
-            yield data;
-          }
-        }
-      }
-    }
+    // Use Local LLM (non-streaming for simplicity)
+    const result = await callLocalLLM(prompt, history);
+    yield result;
   },
 
   // Explain diagram
   async explain(mermaid: string): Promise<string> {
     const settings = getSettings();
+    const prompt = `Explain this Mermaid diagram in detail:\n\n${mermaid}`;
 
     if (settings.useExternalApi) {
-      const prompt = `Explain this Mermaid diagram in detail:\n\n${mermaid}`;
-      
       if (settings.openaiApiKey) {
         return await callOpenAI(prompt);
       } else if (settings.groqApiKey) {
@@ -199,25 +213,18 @@ export const api = {
       }
     }
 
-    const response = await fetch(`${getApiUrl()}/api/explain`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mermaid }),
-    });
-    if (!response.ok) throw new Error('Failed to explain diagram');
-    const data = await response.json();
-    const validated = explainResponseSchema.parse(data);
-    return validated.explanation;
+    // Use Local LLM
+    return await callLocalLLM(prompt);
   },
 
   // Refine diagram
   async refine(mermaid: string, instruction: string): Promise<string> {
     const settings = getSettings();
+    const prompt = `Refine this Mermaid diagram according to the instruction.\n\nCurrent diagram:\n${mermaid}\n\nInstruction: ${instruction}\n\nProvide only the updated Mermaid code, nothing else.`;
+
+    let result: string;
 
     if (settings.useExternalApi) {
-      const prompt = `Refine this Mermaid diagram according to the instruction.\n\nCurrent diagram:\n${mermaid}\n\nInstruction: ${instruction}\n\nProvide only the updated Mermaid code, nothing else.`;
-      
-      let result: string;
       if (settings.openaiApiKey) {
         result = await callOpenAI(prompt);
       } else if (settings.groqApiKey) {
@@ -225,20 +232,13 @@ export const api = {
       } else {
         throw new Error('No external API key configured');
       }
-
-      // Extract mermaid code from response
-      const codeMatch = result.match(/```(?:mermaid)?\n([\s\S]*?)\n```/);
-      return codeMatch ? codeMatch[1].trim() : result.trim();
+    } else {
+      // Use Local LLM
+      result = await callLocalLLM(prompt);
     }
 
-    const response = await fetch(`${getApiUrl()}/api/refine`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mermaid, instruction }),
-    });
-    if (!response.ok) throw new Error('Failed to refine diagram');
-    const data = await response.json();
-    const validated = refineResponseSchema.parse(data);
-    return validated.mermaid;
+    // Extract mermaid code from response
+    const codeMatch = result.match(/```(?:mermaid)?\n([\s\S]*?)\n```/);
+    return codeMatch ? codeMatch[1].trim() : result.trim();
   },
 };
