@@ -70,6 +70,9 @@ export const settingsSchema = z.object({
   defaultModel: z.string(),
   autoSave: z.boolean(),
   autoSaveInterval: z.number().min(1000).max(60000),
+  openaiApiKey: z.string().optional(),
+  groqApiKey: z.string().optional(),
+  useExternalApi: z.boolean().optional(),
 });
 
 export type Settings = z.infer<typeof settingsSchema>;

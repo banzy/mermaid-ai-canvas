@@ -29,11 +29,23 @@ const Settings = () => {
   const navigate = useNavigate();
   const { settings, updateSettings, projects, editor } = useAppStore();
   const [apiUrl, setApiUrl] = useState(settings.apiUrl);
+  const [openaiApiKey, setOpenaiApiKey] = useState(settings.openaiApiKey || '');
+  const [groqApiKey, setGroqApiKey] = useState(settings.groqApiKey || '');
   const [confirmClearOpen, setConfirmClearOpen] = useState(false);
 
   const handleSaveApiUrl = () => {
     updateSettings({ apiUrl });
     toast.success('API URL saved');
+  };
+
+  const handleSaveOpenAIKey = () => {
+    updateSettings({ openaiApiKey });
+    toast.success('OpenAI API key saved');
+  };
+
+  const handleSaveGroqKey = () => {
+    updateSettings({ groqApiKey });
+    toast.success('Groq API key saved');
   };
 
   const handleClearStorage = () => {
@@ -126,6 +138,59 @@ const Settings = () => {
             <p className="text-xs text-muted-foreground">
               Leave empty to use the default URL from environment variables.
             </p>
+          </div>
+        </section>
+
+        {/* External API Keys */}
+        <section className="glass rounded-xl p-6 space-y-4">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 rounded-lg bg-primary/10">
+              <Server className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <h2 className="font-semibold">External API Keys</h2>
+              <p className="text-sm text-muted-foreground">
+                Configure API keys for external AI providers
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            {/* OpenAI API Key */}
+            <div className="space-y-2">
+              <Label htmlFor="openaiApiKey">OpenAI API Key</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="openaiApiKey"
+                  type="password"
+                  value={openaiApiKey}
+                  onChange={(e) => setOpenaiApiKey(e.target.value)}
+                  placeholder="sk-..."
+                />
+                <Button onClick={handleSaveOpenAIKey}>Save</Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Will use GPT-4o-mini (cheapest model)
+              </p>
+            </div>
+
+            {/* Groq API Key */}
+            <div className="space-y-2">
+              <Label htmlFor="groqApiKey">Groq API Key</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="groqApiKey"
+                  type="password"
+                  value={groqApiKey}
+                  onChange={(e) => setGroqApiKey(e.target.value)}
+                  placeholder="gsk_..."
+                />
+                <Button onClick={handleSaveGroqKey}>Save</Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Fast and cost-effective inference
+              </p>
+            </div>
           </div>
         </section>
 

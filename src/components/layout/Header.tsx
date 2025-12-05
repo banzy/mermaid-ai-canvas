@@ -29,7 +29,9 @@ import {
   Sparkles,
   ChevronDown,
   FolderOpen,
-  LayoutGrid
+  LayoutGrid,
+  Cloud,
+  Server
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { INITIAL_MERMAID } from '@/lib/schemas';
@@ -46,7 +48,9 @@ export const Header = () => {
     setCommandPaletteOpen,
     toggleAIPanel,
     isAIPanelOpen,
-    setCurrentProjectId
+    setCurrentProjectId,
+    settings,
+    updateSettings
   } = useAppStore();
 
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
@@ -112,6 +116,12 @@ export const Header = () => {
     toast.success('Share link copied to clipboard');
   };
 
+  const handleToggleExternalApi = () => {
+    const newValue = !settings.useExternalApi;
+    updateSettings({ useExternalApi: newValue });
+    toast.success(newValue ? 'Using External API' : 'Using Internal API');
+  };
+
   return (
     <>
       <header className="flex h-14 items-center justify-between border-b border-border bg-card px-4">
@@ -155,6 +165,21 @@ export const Header = () => {
           >
             <Sparkles className="h-4 w-4 mr-1.5" />
             AI
+          </Button>
+
+          {/* API Mode Toggle */}
+          <Button
+            variant={settings.useExternalApi ? "default" : "secondary"}
+            size="sm"
+            onClick={handleToggleExternalApi}
+            title={settings.useExternalApi ? "Using External API" : "Using Internal API"}
+          >
+            {settings.useExternalApi ? (
+              <Cloud className="h-4 w-4 mr-1.5" />
+            ) : (
+              <Server className="h-4 w-4 mr-1.5" />
+            )}
+            {settings.useExternalApi ? "External" : "Internal"}
           </Button>
 
           {/* New */}

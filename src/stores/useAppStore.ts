@@ -78,6 +78,9 @@ const initialSettings: Settings = {
   defaultModel: '',
   autoSave: true,
   autoSaveInterval: 3000,
+  openaiApiKey: '',
+  groqApiKey: '',
+  useExternalApi: false,
 };
 
 // Validation helpers
