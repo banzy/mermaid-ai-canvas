@@ -6,14 +6,17 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
-import { 
-  ArrowLeft, 
-  Server, 
-  Clock, 
-  Trash2, 
+import {
+  ArrowLeft,
+  Server,
+  Clock,
+  Trash2,
   Download,
   Upload,
-  AlertTriangle
+  AlertTriangle,
+  Loader2,
+  CheckCircle2,
+  XCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -32,6 +35,9 @@ const Settings = () => {
   const [openaiApiKey, setOpenaiApiKey] = useState(settings.openaiApiKey || '');
   const [groqApiKey, setGroqApiKey] = useState(settings.groqApiKey || '');
   const [confirmClearOpen, setConfirmClearOpen] = useState(false);
+  const [testingLocalLLM, setTestingLocalLLM] = useState(false);
+  const [testingOpenAI, setTestingOpenAI] = useState(false);
+  const [testingGroq, setTestingGroq] = useState(false);
 
   const handleSaveApiUrl = () => {
     updateSettings({ apiUrl });
@@ -48,6 +54,101 @@ const Settings = () => {
     toast.success('Groq API key saved');
   };
 
+  const handleTestLocalLLM = async () => {
+    setTestingLocalLLM(true);
+    try {
+      const url =
+        apiUrl || import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      const response = await fetch(`${url}/api/models`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      if (data.models && Array.isArray(data.models)) {
+        toast.success(
+          `Connection successful! Found ${data.models.length} model(s)`
+        );
+      } else {
+        toast.success('Connection successful!');
+      }
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Connection failed';
+      toast.error(`Local LLM test failed: ${message}`);
+    } finally {
+      setTestingLocalLLM(false);
+    }
+  };
+
+  const handleTestOpenAI = async () => {
+    const keyToTest = openaiApiKey || settings.openaiApiKey;
+    if (!keyToTest) {
+      toast.error('Please enter an API key first');
+      return;
+    }
+
+    setTestingOpenAI(true);
+    try {
+      const response = await fetch('https://api.openai.com/v1/models', {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${keyToTest}`,
+        },
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        throw new Error(`HTTP ${response.status}: ${error}`);
+      }
+
+      const data = await response.json();
+      toast.success('OpenAI API key is valid!');
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Invalid API key';
+      toast.error(`OpenAI test failed: ${message}`);
+    } finally {
+      setTestingOpenAI(false);
+    }
+  };
+
+  const handleTestGroq = async () => {
+    const keyToTest = groqApiKey || settings.groqApiKey;
+    if (!keyToTest) {
+      toast.error('Please enter an API key first');
+      return;
+    }
+
+    setTestingGroq(true);
+    try {
+      const response = await fetch('https://api.groq.com/openai/v1/models', {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${keyToTest}`,
+        },
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        throw new Error(`HTTP ${response.status}: ${error}`);
+      }
+
+      const data = await response.json();
+      toast.success('Groq API key is valid!');
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Invalid API key';
+      toast.error(`Groq test failed: ${message}`);
+    } finally {
+      setTestingGroq(false);
+    }
+  };
+
   const handleClearStorage = () => {
     localStorage.removeItem('mermaid-ai-studio-storage');
     toast.success('All data cleared. Refresh the page.');
@@ -60,7 +161,9 @@ const Settings = () => {
       projects,
       exportedAt: new Date().toISOString(),
     };
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const blob = new Blob([JSON.stringify(data, null, 2)], {
+      type: 'application/json',
+    });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -134,6 +237,17 @@ const Settings = () => {
                 placeholder="http://localhost:8000"
               />
               <Button onClick={handleSaveApiUrl}>Save</Button>
+              <Button
+                variant="outline"
+                onClick={handleTestLocalLLM}
+                disabled={testingLocalLLM}
+              >
+                {testingLocalLLM ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  'Test'
+                )}
+              </Button>
             </div>
             <p className="text-xs text-muted-foreground">
               Leave empty to use the default URL from environment variables.
@@ -168,6 +282,17 @@ const Settings = () => {
                   placeholder="sk-..."
                 />
                 <Button onClick={handleSaveOpenAIKey}>Save</Button>
+                <Button
+                  variant="outline"
+                  onClick={handleTestOpenAI}
+                  disabled={testingOpenAI}
+                >
+                  {testingOpenAI ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    'Test'
+                  )}
+                </Button>
               </div>
               <p className="text-xs text-muted-foreground">
                 Will use GPT-4o-mini (cheapest model)
@@ -186,6 +311,17 @@ const Settings = () => {
                   placeholder="gsk_..."
                 />
                 <Button onClick={handleSaveGroqKey}>Save</Button>
+                <Button
+                  variant="outline"
+                  onClick={handleTestGroq}
+                  disabled={testingGroq}
+                >
+                  {testingGroq ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    'Test'
+                  )}
+                </Button>
               </div>
               <p className="text-xs text-muted-foreground">
                 Fast and cost-effective inference
@@ -213,16 +349,22 @@ const Settings = () => {
             <Switch
               id="autoSave"
               checked={settings.autoSave}
-              onCheckedChange={(checked) => updateSettings({ autoSave: checked })}
+              onCheckedChange={(checked) =>
+                updateSettings({ autoSave: checked })
+              }
             />
           </div>
 
           {settings.autoSave && (
             <div className="space-y-2">
-              <Label>Auto-save Interval: {settings.autoSaveInterval / 1000}s</Label>
+              <Label>
+                Auto-save Interval: {settings.autoSaveInterval / 1000}s
+              </Label>
               <Slider
                 value={[settings.autoSaveInterval]}
-                onValueChange={([value]) => updateSettings({ autoSaveInterval: value })}
+                onValueChange={([value]) =>
+                  updateSettings({ autoSaveInterval: value })
+                }
                 min={1000}
                 max={30000}
                 step={1000}
@@ -286,8 +428,8 @@ const Settings = () => {
             </div>
           </div>
 
-          <Button 
-            variant="destructive" 
+          <Button
+            variant="destructive"
             onClick={() => setConfirmClearOpen(true)}
           >
             <Trash2 className="h-4 w-4 mr-2" />
@@ -300,14 +442,19 @@ const Settings = () => {
       <Dialog open={confirmClearOpen} onOpenChange={setConfirmClearOpen}>
         <DialogContent className="glass-intense">
           <DialogHeader>
-            <DialogTitle className="text-destructive">Clear All Data?</DialogTitle>
+            <DialogTitle className="text-destructive">
+              Clear All Data?
+            </DialogTitle>
             <DialogDescription>
-              This will permanently delete all your projects, settings, and chat history. 
-              This action cannot be undone.
+              This will permanently delete all your projects, settings, and chat
+              history. This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="secondary" onClick={() => setConfirmClearOpen(false)}>
+            <Button
+              variant="secondary"
+              onClick={() => setConfirmClearOpen(false)}
+            >
               Cancel
             </Button>
             <Button variant="destructive" onClick={handleClearStorage}>
