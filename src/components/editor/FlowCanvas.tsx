@@ -167,26 +167,7 @@ export const FlowCanvas = () => {
       });
       return currentNodes;
     });
-    
-    // Only sync position changes after drag ends
-    const hasDragEnd = processedChanges.some(c => c.type === 'position' && !('dragging' in c && (c as { dragging?: boolean }).dragging));
-    if (hasDragEnd) {
-      // Use setTimeout to get updated nodes
-      setTimeout(() => {
-        setNodes((currentNodes: Node<CustomNodeData>[]) => {
-          // Ensure all positions are snapped (center-aligned)
-          const snappedNodes = currentNodes.map(node => ({
-            ...node,
-            position: snapToGrid(node.position, true),
-          }));
-          syncToCode(snappedNodes, edges);
-          // Update cache one last time with final snapped positions
-          snappedNodes.forEach(n => nodePositionsRef.current.set(n.id, n.position));
-          return snappedNodes;
-        });
-      }, 0);
-    }
-  }, [onNodesChange, edges, syncToCode, setNodes, snapToGrid]);
+  }, [onNodesChange, setNodes, snapToGrid]);
 
   const handleEdgesChange = useCallback((changes: EdgeChange[]) => {
     onEdgesChange(changes);
