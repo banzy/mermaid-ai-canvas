@@ -1,11 +1,11 @@
 import { create } from 'zustand';
 import { persist, devtools } from 'zustand/middleware';
 import { z } from 'zod';
-import { 
-  EditorState, 
-  ChatState, 
-  Settings, 
-  Message, 
+import {
+  EditorState,
+  ChatState,
+  Settings,
+  Message,
   Project,
   editorStateSchema,
   chatStateSchema,
@@ -42,6 +42,8 @@ interface AppState {
   updateSettings: (settings: Partial<Settings>) => void;
   setSecureApiKey: (key: 'openaiApiKey' | 'groqApiKey', value: string) => Promise<void>;
   getSecureApiKey: (key: 'openaiApiKey' | 'groqApiKey') => Promise<string | null>;
+  setSecureApiUrl: (value: string) => Promise<void>;
+  getSecureApiUrl: () => Promise<string | null>;
 
   // Projects slice
   projects: Project[];
@@ -59,7 +61,7 @@ interface AppState {
   setAIPanelOpen: (open: boolean) => void;
   setAIPanelHeight: (height: number) => void;
   setIsPanelMinimized: (minimized: boolean) => void;
-  
+
   // Command palette
   isCommandPaletteOpen: boolean;
   setCommandPaletteOpen: (open: boolean) => void;
@@ -133,7 +135,7 @@ export const useAppStore = create<AppState>()(
             content: z.string(),
             timestamp: z.number(),
           }).safeParse(message);
-          
+
           if (validated.success) {
             set((state) => ({
               chat: { ...state.chat, messages: [...state.chat.messages, validated.data] }
@@ -203,6 +205,33 @@ export const useAppStore = create<AppState>()(
             return null;
           }
         },
+        setSecureApiUrl: async (value) => {
+          try {
+            if (value) {
+              await setSecureData('apiUrl', value);
+            } else {
+              removeSecureData('apiUrl');
+            }
+            const current = get().settings;
+            set({
+              settings: {
+                ...current,
+                apiUrl: value ? '***ENCRYPTED***' : '',
+              },
+            });
+          } catch (error) {
+            console.error('Failed to set secure API URL:', error);
+            throw error;
+          }
+        },
+        getSecureApiUrl: async () => {
+          try {
+            return await getSecureData('apiUrl');
+          } catch (error) {
+            console.error('Failed to get secure API URL:', error);
+            return null;
+          }
+        },
 
         // Projects
         projects: [],
@@ -210,12 +239,12 @@ export const useAppStore = create<AppState>()(
         saveProject: (name) => {
           const { editor, projects, currentProjectId } = get();
           const now = Date.now();
-          
+
           if (currentProjectId) {
             // Update existing project
             set({
-              projects: projects.map(p => 
-                p.id === currentProjectId 
+              projects: projects.map(p =>
+                p.id === currentProjectId
                   ? { ...p, code: editor.code, updatedAt: now, name: name || p.name }
                   : p
               ),
@@ -262,7 +291,7 @@ export const useAppStore = create<AppState>()(
         setAIPanelOpen: (open) => set({ isAIPanelOpen: open }),
         setAIPanelHeight: (height) => set({ aiPanelHeight: Math.max(150, Math.min(600, height)) }),
         setIsPanelMinimized: (minimized) => set({ isPanelMinimized: minimized }),
-        
+
         // Command palette
         isCommandPaletteOpen: false,
         setCommandPaletteOpen: (open) => set({ isCommandPaletteOpen: open }),

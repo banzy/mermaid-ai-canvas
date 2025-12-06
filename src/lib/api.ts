@@ -12,6 +12,7 @@ interface Settings {
   useExternalApi?: boolean;
   openaiApiKey?: string;
   groqApiKey?: string;
+  externalApiProvider?: 'openai' | 'groq';
 }
 
 const getSettings = (): Settings => {
@@ -20,7 +21,7 @@ const getSettings = (): Settings => {
     try {
       const parsed = JSON.parse(stored);
       return parsed.state?.settings || {};
-    } catch {}
+    } catch { }
   }
   return {};
 };
@@ -39,11 +40,17 @@ const getSecureSettings = async (): Promise<Settings> => {
   };
 };
 
-const getApiUrl = () => {
+const getApiUrl = async () => {
+  const secureApiUrl = await getSecureData('apiUrl');
+  if (secureApiUrl) {
+    return secureApiUrl;
+  }
+
   const settings = getSettings();
-  if (settings.apiUrl) {
+  if (settings.apiUrl && settings.apiUrl !== '***ENCRYPTED***') {
     return settings.apiUrl;
   }
+
   // Default to LM Studio's default port
   return import.meta.env.VITE_API_URL || 'http://localhost:1234';
 };
@@ -56,7 +63,8 @@ const callLocalLLM = async (
   // First, get available models to use one
   let model = '';
   try {
-    const modelsResponse = await fetch(`${getApiUrl()}/v1/models`);
+    const baseUrl = await getApiUrl();
+    const modelsResponse = await fetch(`${baseUrl}/v1/models`);
     if (modelsResponse.ok) {
       const modelsData = await modelsResponse.json();
       if (
@@ -104,7 +112,8 @@ const callLocalLLM = async (
     requestBody.model = model;
   }
 
-  const response = await fetch(`${getApiUrl()}/v1/chat/completions`, {
+  const baseUrl = await getApiUrl();
+  const response = await fetch(`${baseUrl}/v1/chat/completions`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -240,7 +249,8 @@ export const api = {
     }
 
     // Use LM Studio's OpenAI-compatible /v1/models endpoint
-    const response = await fetch(`${getApiUrl()}/v1/models`);
+    const baseUrl = await getApiUrl();
+    const response = await fetch(`${baseUrl}/v1/models`);
     if (!response.ok) throw new Error('Failed to fetch models');
     const data = await response.json();
 
@@ -324,7 +334,7 @@ export const api = {
   // Refine diagram
   async refine(mermaid: string, instruction: string): Promise<string> {
     const settings = await getSecureSettings();
-    const prompt = `Refine this Mermaid diagram according to the instruction.\n\nCurrent diagram:\n${mermaid}\n\nInstruction: ${instruction}\n\nProvide only the updated Mermaid code, nothing else.`;
+    const prompt = `You are editing an existing Mermaid diagram.\n\nCurrent Mermaid diagram:\n${mermaid}\n\nEdit instruction:\n${instruction}\n\nRules:\n- Modify the existing diagram IN PLACE.\n- Do NOT create a new or different flow; keep the overall structure and style as close as possible to the original.\n- Only add, remove, or adjust the nodes/edges/styles that are strictly necessary to follow the instruction.\n- Keep the same diagram type (e.g. flowchart TD stays flowchart TD).\n- Keep the existing style blocks unless they must change to remain consistent.\n\nReturn ONLY the full, updated Mermaid code (no explanation, no backticks).`;
 
     let result: string;
 

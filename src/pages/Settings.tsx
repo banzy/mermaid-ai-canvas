@@ -31,8 +31,8 @@ import {
 
 const Settings = () => {
   const navigate = useNavigate();
-  const { settings, updateSettings, setSecureApiKey, getSecureApiKey, projects, editor } = useAppStore();
-  const [apiUrl, setApiUrl] = useState(settings.apiUrl);
+  const { settings, updateSettings, setSecureApiKey, getSecureApiKey, setSecureApiUrl, getSecureApiUrl, projects, editor } = useAppStore();
+  const [apiUrl, setApiUrl] = useState('');
   const [openaiApiKey, setOpenaiApiKey] = useState('');
   const [groqApiKey, setGroqApiKey] = useState('');
   const [confirmClearOpen, setConfirmClearOpen] = useState(false);
@@ -52,6 +52,8 @@ const Settings = () => {
         const groq = await getSecureApiKey('groqApiKey');
         setOpenaiApiKey(openai || '');
         setGroqApiKey(groq || '');
+        const storedApiUrl = await getSecureApiUrl();
+        setApiUrl(storedApiUrl || '');
       } catch (error) {
         console.error('Failed to load API keys:', error);
       } finally {
@@ -59,11 +61,16 @@ const Settings = () => {
       }
     };
     loadApiKeys();
-  }, [getSecureApiKey]);
+  }, [getSecureApiKey, getSecureApiUrl]);
 
-  const handleSaveApiUrl = () => {
-    updateSettings({ apiUrl });
-    toast.success('API URL saved');
+  const handleSaveApiUrl = async () => {
+    try {
+      await setSecureApiUrl(apiUrl);
+      toast.success('API URL saved securely');
+    } catch (error) {
+      toast.error('Failed to save API URL');
+      console.error(error);
+    }
   };
 
   const handleSaveOpenAIKey = async () => {
@@ -87,6 +94,15 @@ const Settings = () => {
   };
 
   const handleTestLocalLLM = async () => {
+    // Save the current API URL before testing
+    try {
+      await setSecureApiUrl(apiUrl);
+    } catch (error) {
+      toast.error('Failed to save API URL before testing');
+      console.error(error);
+      return;
+    }
+
     setTestingLocalLLM(true);
     try {
       // Default to LM Studio's default port (1234)
@@ -100,7 +116,7 @@ const Settings = () => {
 
       // Get response text first to show in toast
       const responseText = await response.text();
-      
+
       if (!response.ok) {
         toast.error(
           `HTTP ${response.status}: ${response.statusText}\nResponse: ${responseText.substring(0, 200)}`
@@ -150,6 +166,15 @@ const Settings = () => {
       return;
     }
 
+    // Save the current key before testing
+    try {
+      await setSecureApiKey('openaiApiKey', keyToTest);
+    } catch (error) {
+      toast.error('Failed to save OpenAI API key before testing');
+      console.error(error);
+      return;
+    }
+
     setTestingOpenAI(true);
     try {
       const response = await fetch('https://api.openai.com/v1/models', {
@@ -179,6 +204,15 @@ const Settings = () => {
     const keyToTest = groqApiKey || settings.groqApiKey;
     if (!keyToTest) {
       toast.error('Please enter an API key first');
+      return;
+    }
+
+    // Save the current key before testing
+    try {
+      await setSecureApiKey('groqApiKey', keyToTest);
+    } catch (error) {
+      toast.error('Failed to save Groq API key before testing');
+      console.error(error);
       return;
     }
 
@@ -327,7 +361,7 @@ const Settings = () => {
                 </p>
               </div>
             </div>
-            
+
             {/* Provider Toggle */}
             <div className="flex items-center gap-3 ml-auto">
               <Label className="text-sm font-normal">Preferred Provider:</Label>
@@ -360,7 +394,7 @@ const Settings = () => {
                   placeholder="sk-..."
                   disabled={loadingKeys}
                 />
-                <Button 
+                <Button
                   onClick={handleSaveOpenAIKey}
                   disabled={openaiApiKey.length < 16 || loadingKeys}
                 >
@@ -400,7 +434,7 @@ const Settings = () => {
                   placeholder="gsk_..."
                   disabled={loadingKeys}
                 />
-                <Button 
+                <Button
                   onClick={handleSaveGroqKey}
                   disabled={groqApiKey.length < 16 || loadingKeys}
                 >
