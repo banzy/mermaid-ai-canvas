@@ -55,10 +55,21 @@ const getApiUrl = async () => {
   return import.meta.env.VITE_API_URL || 'http://localhost:1234';
 };
 
+const getSystemPrompt = (context?: string) => {
+  let prompt = 'You are a helpful assistant that specializes in creating and explaining Mermaid diagrams. When asked to create or modify diagrams, provide only the Mermaid code unless asked for explanations.';
+  
+  if (context) {
+    prompt += `\n\nHere is the current Mermaid diagram code you are working with:\n\`\`\`mermaid\n${context}\n\`\`\`\n\nIf the user asks to modify the diagram, use this code as the baseline. Return the full updated Mermaid code.\n\nCRITICAL RULES FOR MODIFICATIONS:\n- Modify the existing diagram IN PLACE. Do NOT create a new or different flow; keep the overall structure and style as close as possible to the original.\n- Only add, remove, or adjust the nodes/edges/styles that are strictly necessary to follow the instruction.\n- Keep the same diagram type (e.g. flowchart TD stays flowchart TD).\n- Keep the existing style blocks unless they must change to remain consistent.\n- When removing a node: Remove ALL edges connected to that node. Do NOT automatically reroute edges to other nodes unless the user explicitly asks you to.\n- Keep node IDs, styling, and layout direction consistent with the original.\n- Make MINIMAL changes - only modify what is explicitly requested.`;
+  }
+  
+  return prompt;
+};
+
 // Local LLM helper (LM Studio uses OpenAI-compatible API)
 const callLocalLLM = async (
   prompt: string,
-  history?: Message[]
+  history?: Message[],
+  context?: string
 ): Promise<string> => {
   // First, get available models to use one
   let model = '';
@@ -91,8 +102,7 @@ const callLocalLLM = async (
   const messages = [
     {
       role: 'system',
-      content:
-        'You are a helpful assistant that specializes in creating and explaining Mermaid diagrams. When asked to create or modify diagrams, provide only the Mermaid code unless asked for explanations.',
+      content: getSystemPrompt(context),
     },
     ...(history || []).map((msg) => ({
       role: msg.role,
@@ -143,7 +153,8 @@ const callLocalLLM = async (
 // External API helpers
 const callOpenAI = async (
   prompt: string,
-  history?: Message[]
+  history?: Message[],
+  context?: string
 ): Promise<string> => {
   const settings = await getSecureSettings();
   const apiKey = settings.openaiApiKey;
@@ -155,8 +166,7 @@ const callOpenAI = async (
   const messages = [
     {
       role: 'system',
-      content:
-        'You are a helpful assistant that specializes in creating and explaining Mermaid diagrams. When asked to create or modify diagrams, provide only the Mermaid code unless asked for explanations.',
+      content: getSystemPrompt(context),
     },
     ...(history || []).map((msg) => ({
       role: msg.role,
@@ -189,7 +199,8 @@ const callOpenAI = async (
 
 const callGroq = async (
   prompt: string,
-  history?: Message[]
+  history?: Message[],
+  context?: string
 ): Promise<string> => {
   const settings = await getSecureSettings();
   const apiKey = settings.groqApiKey;
@@ -201,8 +212,7 @@ const callGroq = async (
   const messages = [
     {
       role: 'system',
-      content:
-        'You are a helpful assistant that specializes in creating and explaining Mermaid diagrams. When asked to create or modify diagrams, provide only the Mermaid code unless asked for explanations.',
+      content: getSystemPrompt(context),
     },
     ...(history || []).map((msg) => ({
       role: msg.role,
@@ -268,7 +278,7 @@ export const api = {
   },
 
   // Generate with streaming using LM Studio
-  async *generate(prompt: string, history?: Message[]): AsyncGenerator<string> {
+  async *generate(prompt: string, history?: Message[], context?: string): AsyncGenerator<string> {
     const settings = await getSecureSettings();
 
     if (settings.useExternalApi) {
@@ -277,15 +287,15 @@ export const api = {
 
       try {
         if (preferredProvider === 'openai' && settings.openaiApiKey) {
-          result = await callOpenAI(prompt, history);
+          result = await callOpenAI(prompt, history, context);
         } else if (preferredProvider === 'groq' && settings.groqApiKey) {
-          result = await callGroq(prompt, history);
+          result = await callGroq(prompt, history, context);
         } else {
           // Fallback to the other provider if preferred one is not available
           if (settings.openaiApiKey) {
-            result = await callOpenAI(prompt, history);
+            result = await callOpenAI(prompt, history, context);
           } else if (settings.groqApiKey) {
-            result = await callGroq(prompt, history);
+            result = await callGroq(prompt, history, context);
           } else {
             throw new Error('No external API key configured');
           }
@@ -299,7 +309,7 @@ export const api = {
     }
 
     // Use Local LLM (non-streaming for simplicity)
-    const result = await callLocalLLM(prompt, history);
+    const result = await callLocalLLM(prompt, history, context);
     yield result;
   },
 

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, memo } from 'react';
+import { useCallback, useEffect, useState, memo, useRef } from 'react';
 import {
   ReactFlow,
   Background,
@@ -65,30 +65,9 @@ export const FlowCanvas = () => {
   const [isConnecting, setIsConnecting] = useState(false);
   const [parseError, setParseError] = useState<string | null>(null);
   const gridSize = GRID_SIZE;
-
-  // Parse mermaid code when it changes
-  useEffect(() => {
-    try {
-      const parsed = parseMermaidToFlow(editor.code);
-      // Snap all node positions to grid (center-aligned for handle alignment)
-      const snappedNodes = parsed.nodes.map(node => ({
-        ...node,
-        position: snapToGrid(node.position, true),
-      }));
-      setNodes(snappedNodes);
-      setEdges(parsed.edges);
-      setDirection(parsed.direction);
-      setParseError(null);
-    } catch (err) {
-      setParseError('Unable to parse diagram');
-    }
-  }, [editor.code, setNodes, setEdges, gridSize]);
-
-  // Sync changes back to mermaid code (debounced)
-  const syncToCode = useCallback((newNodes: Node[], newEdges: Edge[]) => {
-    const code = flowToMermaid(newNodes, newEdges, direction);
-    setCode(code);
-  }, [direction, setCode]);
+  
+  // Persistent memory for node positions to handle temporary disappearances (e.g. while typing)
+  const nodePositionsRef = useRef<Map<string, { x: number; y: number }>>(new Map());
 
   // Helper to snap position to grid
   // For nodes, we need to account for node width to align handles to grid
@@ -108,6 +87,65 @@ export const FlowCanvas = () => {
     };
   }, [gridSize]);
 
+  // Sync changes back to mermaid code (debounced)
+  const syncToCode = useCallback((newNodes: Node[], newEdges: Edge[]) => {
+    const code = flowToMermaid(newNodes, newEdges, direction);
+    setCode(code);
+  }, [direction, setCode]);
+
+  // Parse mermaid code when it changes
+  useEffect(() => {
+    try {
+      const parsed = parseMermaidToFlow(editor.code);
+      
+      // If direction changed, we should probably reset/re-layout to respect the new direction
+      const directionChanged = parsed.direction !== direction;
+      
+      setNodes((currentNodes) => {
+        // If direction changed, use the auto-layout positions from the parser
+        if (directionChanged) {
+          nodePositionsRef.current.clear(); // Clear cache on layout change
+          const snapped = parsed.nodes.map(n => ({
+            ...n,
+            position: snapToGrid(n.position, true)
+          }));
+          // Initialize cache with new positions
+          snapped.forEach(n => nodePositionsRef.current.set(n.id, n.position));
+          return snapped;
+        }
+
+        // Hydrate new nodes with cached positions
+        return parsed.nodes.map(newNode => {
+          // Check cache first, then current nodes (though cache should be up to date)
+          const cachedPos = nodePositionsRef.current.get(newNode.id);
+          
+          if (cachedPos) {
+            return {
+              ...newNode,
+              position: cachedPos
+            };
+          }
+          
+          // Truly new node: use parsed position (auto-layout) and snap to grid
+          const snappedPos = snapToGrid(newNode.position, true);
+          // Add to cache immediately
+          nodePositionsRef.current.set(newNode.id, snappedPos);
+          
+          return {
+            ...newNode,
+            position: snappedPos
+          };
+        });
+      });
+
+      setEdges(parsed.edges);
+      setDirection(parsed.direction);
+      setParseError(null);
+    } catch (err) {
+      setParseError('Unable to parse diagram');
+    }
+  }, [editor.code, setNodes, setEdges, gridSize, snapToGrid, direction]);
+
   const handleNodesChange = useCallback((changes: NodeChange<Node<CustomNodeData>>[]) => {
     // Apply changes and snap positions to grid (center-aligned for handle alignment)
     const processedChanges = changes.map(change => {
@@ -122,6 +160,14 @@ export const FlowCanvas = () => {
     
     onNodesChange(processedChanges);
     
+    // Update cache with new positions
+    setNodes(currentNodes => {
+      currentNodes.forEach(node => {
+        nodePositionsRef.current.set(node.id, node.position);
+      });
+      return currentNodes;
+    });
+    
     // Only sync position changes after drag ends
     const hasDragEnd = processedChanges.some(c => c.type === 'position' && !('dragging' in c && (c as { dragging?: boolean }).dragging));
     if (hasDragEnd) {
@@ -134,6 +180,8 @@ export const FlowCanvas = () => {
             position: snapToGrid(node.position, true),
           }));
           syncToCode(snappedNodes, edges);
+          // Update cache one last time with final snapped positions
+          snappedNodes.forEach(n => nodePositionsRef.current.set(n.id, n.position));
           return snappedNodes;
         });
       }, 0);

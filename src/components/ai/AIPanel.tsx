@@ -67,7 +67,7 @@ export const AIPanel = () => {
 
     try {
       let fullContent = '';
-      for await (const chunk of api.generate(input.trim(), chat.messages)) {
+      for await (const chunk of api.generate(input.trim(), chat.messages, editor.code)) {
         fullContent += chunk;
         updateLastMessage(fullContent);
       }

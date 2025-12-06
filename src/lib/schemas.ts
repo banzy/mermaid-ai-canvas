@@ -66,7 +66,7 @@ export type ChatState = z.infer<typeof chatStateSchema>;
 
 // Settings Schema
 export const settingsSchema = z.object({
-  apiUrl: z.string().url().or(z.literal('')),
+  apiUrl: z.string().url().or(z.literal('')).or(z.literal('***ENCRYPTED***')),
   defaultModel: z.string(),
   autoSave: z.boolean(),
   autoSaveInterval: z.number().min(1000).max(60000),
