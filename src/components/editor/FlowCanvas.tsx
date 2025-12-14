@@ -7,6 +7,7 @@ import {
   useNodesState,
   useEdgesState,
   addEdge,
+  applyEdgeChanges,
   Connection,
   Node,
   Edge,
@@ -21,9 +22,11 @@ import {
 import '@xyflow/react/dist/style.css';
 import { useAppStore } from '@/stores/useAppStore';
 import { parseMermaidToFlow, flowToMermaid } from '@/lib/mermaidParser';
+import { removeFlowchartEdgeLine, removeFlowchartNodeReferences } from '@/lib/mermaidTextOps';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Trash2, Type } from 'lucide-react';
+import { Plus, Trash2, Type, Wand2, Loader2 } from 'lucide-react';
+import { api } from '@/lib/api';
 import { toast } from 'sonner';
 
 type CustomNodeData = { label: string };
@@ -64,6 +67,7 @@ export const FlowCanvas = () => {
   const [editingLabel, setEditingLabel] = useState('');
   const [isConnecting, setIsConnecting] = useState(false);
   const [parseError, setParseError] = useState<string | null>(null);
+  const [isReorganizing, setIsReorganizing] = useState(false);
   const gridSize = GRID_SIZE;
   
   // Persistent memory for node positions to handle temporary disappearances (e.g. while typing)
@@ -170,8 +174,35 @@ export const FlowCanvas = () => {
   }, [onNodesChange, setNodes, snapToGrid]);
 
   const handleEdgesChange = useCallback((changes: EdgeChange[]) => {
+    // Find removed edges BEFORE applying changes
+    const removals = changes.filter((c) => c.type === 'remove');
+    
+    if (removals.length > 0) {
+      // Get the edges being removed from current state
+      const removedEdges = edges.filter((e) => removals.some((r) => r.id === e.id));
+      
+      // Minimal-diff: remove only the matching lines from Mermaid text
+      let nextCode = editor.code;
+      let totalRemoved = 0;
+      for (const e of removedEdges) {
+        const res = removeFlowchartEdgeLine(nextCode, e.source, e.target);
+        nextCode = res.code;
+        totalRemoved += res.removedCount;
+      }
+
+      // Only use minimal-diff if we successfully matched and removed lines
+      if (totalRemoved > 0 && nextCode !== editor.code) {
+        // Update code first - this will trigger useEffect to update edges/nodes
+        setCode(nextCode);
+        // Also apply edge changes immediately to keep React Flow in sync
+        onEdgesChange(changes);
+        return;
+      }
+    }
+    
+    // Default: just apply changes normally (non-removal changes, or fallback)
     onEdgesChange(changes);
-  }, [onEdgesChange]);
+  }, [edges, editor.code, setCode, onEdgesChange]);
 
   const onConnect = useCallback((params: Connection) => {
     const newEdge: Edge = {
@@ -220,18 +251,28 @@ export const FlowCanvas = () => {
 
   const deleteSelected = useCallback(() => {
     if (!selectedNode) return;
-    setNodes(nds => {
-      const updated = nds.filter(n => n.id !== selectedNode.id);
-      setEdges(eds => {
-        const filteredEdges = eds.filter(e => e.source !== selectedNode.id && e.target !== selectedNode.id);
-        syncToCode(updated, filteredEdges);
-        return filteredEdges;
+    // Minimal-diff delete: remove only the lines that reference this node (and its attached edges).
+    const res = removeFlowchartNodeReferences(editor.code, selectedNode.id);
+    if (res.code !== editor.code) {
+      setCode(res.code);
+      // Keep local state in sync immediately (even though setCode() will re-parse shortly).
+      setNodes(nds => nds.filter(n => n.id !== selectedNode.id));
+      setEdges(eds => eds.filter(e => e.source !== selectedNode.id && e.target !== selectedNode.id));
+    } else {
+      // Fallback (edge cases / unusual syntax): regenerate from the canvas model.
+      setNodes(nds => {
+        const updated = nds.filter(n => n.id !== selectedNode.id);
+        setEdges(eds => {
+          const filteredEdges = eds.filter(e => e.source !== selectedNode.id && e.target !== selectedNode.id);
+          syncToCode(updated, filteredEdges);
+          return filteredEdges;
+        });
+        return updated;
       });
-      return updated;
-    });
+    }
     setSelectedNode(null);
     toast.success('Node deleted');
-  }, [selectedNode, setNodes, setEdges, syncToCode]);
+  }, [selectedNode, editor.code, setCode, setNodes, setEdges, syncToCode]);
 
   const updateNodeLabel = useCallback(() => {
     if (!selectedNode || !editingLabel.trim()) return;
@@ -247,7 +288,6 @@ export const FlowCanvas = () => {
     toast.success('Label updated');
   }, [selectedNode, editingLabel, setNodes, edges, syncToCode]);
 
-  // Snap all nodes to grid
   const snapAllNodesToGrid = useCallback(() => {
     setNodes((currentNodes: Node<CustomNodeData>[]) => {
       const updated = currentNodes.map(node => ({
@@ -258,6 +298,24 @@ export const FlowCanvas = () => {
       return updated;
     });
   }, [setNodes, edges, syncToCode, snapToGrid]);
+
+  const handleSmartReorganize = useCallback(async () => {
+    if (!editor.code.trim()) return;
+    
+    setIsReorganizing(true);
+    const toastId = toast.loading('Reorganizing diagram...');
+    
+    try {
+      const newCode = await api.reorganize(editor.code);
+      setCode(newCode);
+      toast.success('Diagram reorganized successfully', { id: toastId });
+    } catch (error) {
+      console.error('Reorganization failed:', error);
+      toast.error('Failed to reorganize diagram', { id: toastId });
+    } finally {
+      setIsReorganizing(false);
+    }
+  }, [editor.code, setCode]);
 
   return (
     <div className="h-full w-full rounded-lg border border-border bg-background overflow-hidden">
@@ -273,6 +331,7 @@ export const FlowCanvas = () => {
         fitView
         snapToGrid
         snapGrid={[gridSize, gridSize]}
+        deleteKeyCode={['Backspace', 'Delete']}
         connectionLineType={ConnectionLineType.Step}
         defaultEdgeOptions={{
           type: 'step',
@@ -293,6 +352,19 @@ export const FlowCanvas = () => {
           <Button size="sm" variant="secondary" onClick={addNode}>
             <Plus className="h-4 w-4 mr-1" />
             Add Node
+          </Button>
+          <Button 
+            size="sm" 
+            variant="secondary" 
+            onClick={handleSmartReorganize}
+            disabled={isReorganizing || !editor.code.trim()}
+          >
+            {isReorganizing ? (
+              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+            ) : (
+              <Wand2 className="h-4 w-4 mr-1" />
+            )}
+            Smart Reorganize
           </Button>
           {selectedNode && (
             <Button size="sm" variant="destructive" onClick={deleteSelected}>
