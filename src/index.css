@@ -78,7 +78,7 @@
     font-family: 'Inter', system-ui, sans-serif;
   }
 
-  code, pre, .monaco-editor {
+  code, pre {
     font-family: 'JetBrains Mono', monospace !important;
   }
 }
@@ -190,32 +190,28 @@
   animation: shimmer 1.5s infinite;
 }
 
-/* Monaco Editor Overrides */
-.monaco-editor .margin {
-  background: hsl(var(--card)) !important;
-}
-
-.monaco-editor .monaco-editor-background {
-  background: hsl(var(--card)) !important;
-}
-
 /* React Flow Overrides */
 .react-flow__background {
-  background: hsl(var(--background)) !important;
+  background: hsl(222 47% 5%) !important;
 }
 
 .react-flow__node {
-  @apply glass rounded-lg;
+  /* Custom nodes handle their own styling */
 }
 
-/* Mermaid Overrides */
-.mermaid {
-  @apply w-full h-full flex items-center justify-center;
+.react-flow__edge-path {
+  stroke-linecap: round;
 }
 
-.mermaid svg {
-  max-width: 100%;
-  max-height: 100%;
+.react-flow__controls {
+  border-radius: 12px !important;
+  overflow: hidden;
+  border: 1px solid hsl(222 30% 18%) !important;
+}
+
+.react-flow__minimap {
+  border-radius: 12px !important;
+  border: 1px solid hsl(222 30% 18%) !important;
 }
 
 /* Command Palette */

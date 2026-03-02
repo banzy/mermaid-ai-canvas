@@ -1,357 +1,187 @@
-export interface Example {
-  id: string;
-  name: string;
-  description: string;
-  category: 'flowchart' | 'sequence' | 'class' | 'state' | 'er' | 'journey' | 'gantt' | 'pie' | 'mindmap';
-  code: string;
-}
+import type { MindProject } from './schemas';
 
-export const examples: Example[] = [
-  {
-    id: 'user-flow',
-    name: 'User Authentication Flow',
-    description: 'Login and registration process with OAuth',
-    category: 'flowchart',
-    code: `flowchart TD
-    A[🏠 Landing Page] --> B{User Status}
-    B -->|New User| C[📝 Registration]
-    B -->|Existing| D[🔐 Login]
-    C --> E[Email Verification]
-    D --> F{Auth Method}
-    F -->|Password| G[Validate Credentials]
-    F -->|OAuth| H[🌐 Provider Auth]
-    E --> I[✅ Account Created]
-    G --> J{Valid?}
-    H --> J
-    J -->|Yes| K[🎉 Dashboard]
-    J -->|No| L[❌ Error]
-    L --> D
-    I --> K
-    
-    style A fill:#0ea5e9,stroke:#0284c7,color:#fff
-    style K fill:#22c55e,stroke:#16a34a,color:#fff
-    style L fill:#ef4444,stroke:#dc2626,color:#fff`,
-  },
-  {
-    id: 'api-sequence',
-    name: 'REST API Sequence',
-    description: 'Client-server API communication pattern',
-    category: 'sequence',
-    code: `sequenceDiagram
-    participant C as 💻 Client
-    participant G as 🚪 API Gateway
-    participant A as 🔐 Auth Service
-    participant S as ⚙️ Service
-    participant D as 🗄️ Database
-    
-    C->>G: POST /api/data
-    G->>A: Validate Token
-    A-->>G: Token Valid ✅
-    G->>S: Forward Request
-    S->>D: Query Data
-    D-->>S: Return Results
-    S-->>G: Response Payload
-    G-->>C: 200 OK + Data`,
-  },
-  {
-    id: 'class-diagram',
-    name: 'E-commerce Classes',
-    description: 'Product and order management system',
-    category: 'class',
-    code: `classDiagram
-    class User {
-        +String id
-        +String email
-        +String name
-        +login()
-        +logout()
-    }
-    class Product {
-        +String id
-        +String name
-        +Float price
-        +Int stock
-        +updateStock()
-    }
-    class Order {
-        +String id
-        +Date createdAt
-        +String status
-        +calculateTotal()
-        +process()
-    }
-    class Cart {
-        +addItem()
-        +removeItem()
-        +checkout()
-    }
-    
-    User "1" --> "*" Order : places
-    User "1" --> "1" Cart : has
-    Order "*" --> "*" Product : contains
-    Cart "*" --> "*" Product : contains`,
-  },
-  {
-    id: 'state-order',
-    name: 'Order State Machine',
-    description: 'E-commerce order lifecycle states',
-    category: 'state',
-    code: `stateDiagram-v2
-    [*] --> Pending: Order Placed
-    Pending --> Processing: Payment Confirmed
-    Pending --> Cancelled: Cancel Request
-    Processing --> Shipped: Items Packed
-    Processing --> Cancelled: Out of Stock
-    Shipped --> Delivered: Delivery Complete
-    Shipped --> Returned: Return Requested
-    Delivered --> Returned: Return Window
-    Returned --> Refunded: Return Processed
-    Cancelled --> Refunded: Refund Issued
-    Refunded --> [*]
-    Delivered --> [*]`,
-  },
-  {
-    id: 'er-blog',
-    name: 'Blog Database Schema',
-    description: 'Content management ER diagram',
-    category: 'er',
-    code: `erDiagram
-    USER ||--o{ POST : writes
-    USER ||--o{ COMMENT : makes
-    POST ||--o{ COMMENT : has
-    POST ||--o{ TAG : tagged
-    CATEGORY ||--o{ POST : contains
-    
-    USER {
-        uuid id PK
-        string email UK
-        string name
-        timestamp created_at
-    }
-    POST {
-        uuid id PK
-        string title
-        text content
-        boolean published
-        uuid author_id FK
-    }
-    COMMENT {
-        uuid id PK
-        text content
-        uuid post_id FK
-        uuid user_id FK
-    }
-    TAG {
-        uuid id PK
-        string name UK
-    }
-    CATEGORY {
-        uuid id PK
-        string name
-        string slug UK
-    }`,
-  },
-  {
-    id: 'user-journey',
-    name: 'Shopping Experience',
-    description: 'Customer journey through checkout',
-    category: 'journey',
-    code: `journey
-    title Shopping Journey
-    section Discovery
-      Browse Homepage: 5: Customer
-      Search Products: 4: Customer
-      View Product Details: 5: Customer
-    section Decision
-      Compare Prices: 3: Customer
-      Read Reviews: 4: Customer
-      Add to Cart: 5: Customer
-    section Purchase
-      View Cart: 4: Customer
-      Enter Shipping: 3: Customer
-      Payment: 2: Customer
-      Confirmation: 5: Customer
-    section Post-Purchase
-      Track Order: 4: Customer
-      Receive Delivery: 5: Customer
-      Leave Review: 3: Customer`,
-  },
-  {
-    id: 'project-gantt',
-    name: 'Sprint Planning',
-    description: 'Agile project timeline',
-    category: 'gantt',
-    code: `gantt
-    title Sprint 12 - Q4 2024
-    dateFormat YYYY-MM-DD
-    
-    section Planning
-        Sprint Planning      :done, plan, 2024-12-01, 1d
-        Backlog Grooming    :done, groom, after plan, 1d
-    
-    section Development
-        Feature A - Auth    :active, auth, 2024-12-03, 5d
-        Feature B - API     :api, after auth, 4d
-        Feature C - UI      :ui, 2024-12-05, 6d
-    
-    section Testing
-        Unit Tests          :test1, after api, 2d
-        Integration Tests   :test2, after test1, 2d
-        QA Review           :qa, after ui, 3d
-    
-    section Deployment
-        Staging Deploy      :staging, after qa, 1d
-        Production Release  :prod, after staging, 1d`,
-  },
-  {
-    id: 'tech-pie',
-    name: 'Tech Stack Distribution',
-    description: 'Project technology breakdown',
-    category: 'pie',
-    code: `pie showData
-    title Technology Distribution
-    "TypeScript" : 45
-    "React" : 25
-    "Node.js" : 15
-    "PostgreSQL" : 10
-    "Docker" : 5`,
-  },
-  {
-    id: 'architecture-mindmap',
-    name: 'System Architecture',
-    description: 'High-level system overview',
-    category: 'mindmap',
-    code: `mindmap
-  root((System))
-    Frontend
-      React
-      TypeScript
-      TailwindCSS
-      Zustand
-    Backend
-      Node.js
-      Express
-      GraphQL
-      REST API
-    Database
-      PostgreSQL
-      Redis
-      S3 Storage
-    Infrastructure
-      AWS
-      Docker
-      Kubernetes
-      CI/CD`,
-  },
-  {
-    id: 'microservices-flow',
-    name: 'Microservices Architecture',
-    description: 'Service communication patterns',
-    category: 'flowchart',
-    code: `flowchart LR
-    subgraph Client
-        A[📱 Mobile App]
-        B[🌐 Web App]
-    end
-    
-    subgraph Gateway
-        C[🚪 API Gateway]
-    end
-    
-    subgraph Services
-        D[👤 User Service]
-        E[📦 Product Service]
-        F[🛒 Order Service]
-        G[💳 Payment Service]
-    end
-    
-    subgraph Data
-        H[(Users DB)]
-        I[(Products DB)]
-        J[(Orders DB)]
-    end
-    
-    subgraph Messaging
-        K[📨 Message Queue]
-    end
-    
-    A --> C
-    B --> C
-    C --> D & E & F & G
-    D --> H
-    E --> I
-    F --> J
-    F --> K
-    G --> K
-    K --> D & E
-    
-    style C fill:#0ea5e9,stroke:#0284c7,color:#fff
-    style K fill:#8b5cf6,stroke:#7c3aed,color:#fff`,
-  },
-  {
-    id: 'ci-cd-flow',
-    name: 'CI/CD Pipeline',
-    description: 'Automated deployment workflow',
-    category: 'flowchart',
-    code: `flowchart TD
-    A[👨‍💻 Git Push] --> B[🔍 Lint & Format]
-    B --> C{Tests Pass?}
-    C -->|Yes| D[📦 Build]
-    C -->|No| E[❌ Notify Team]
-    E --> A
-    D --> F[🐳 Docker Build]
-    F --> G[📤 Push to Registry]
-    G --> H{Branch?}
-    H -->|main| I[🚀 Deploy Staging]
-    H -->|release| J[🎯 Deploy Production]
-    I --> K[🧪 E2E Tests]
-    K --> L{All Green?}
-    L -->|Yes| M[✅ Ready for Prod]
-    L -->|No| E
-    J --> N[📊 Monitor]
-    
-    style A fill:#0ea5e9,stroke:#0284c7,color:#fff
-    style J fill:#22c55e,stroke:#16a34a,color:#fff
-    style E fill:#ef4444,stroke:#dc2626,color:#fff`,
-  },
-  {
-    id: 'git-flow',
-    name: 'Git Branching Strategy',
-    description: 'Version control workflow',
-    category: 'flowchart',
-    code: `gitGraph
-    commit id: "init"
-    branch develop
-    commit id: "setup"
-    branch feature/auth
-    commit id: "auth-start"
-    commit id: "auth-done"
-    checkout develop
-    merge feature/auth
-    branch feature/api
-    commit id: "api-endpoints"
-    checkout develop
-    merge feature/api
-    checkout main
-    merge develop tag: "v1.0.0"
-    checkout develop
-    branch hotfix/bug
-    commit id: "fix-bug"
-    checkout main
-    merge hotfix/bug tag: "v1.0.1"
-    checkout develop
-    merge hotfix/bug`,
-  },
-];
+/**
+ * The MindtoBlocks app describing itself — used as the default/demo project.
+ */
+export const MINDTOBLOCKS_SELF: MindProject = {
+  id: 'mindtoblocks-self',
+  name: 'MindtoBlocks',
+  description:
+    'An application that converts software ideas into high-level operational blocks, functional blocks, and flowchart views, and lets users edit the blocks and regenerate textual explanations.',
 
-export const categories = [
-  { id: 'flowchart', name: 'Flowcharts', icon: '📊' },
-  { id: 'sequence', name: 'Sequence', icon: '🔄' },
-  { id: 'class', name: 'Class', icon: '📐' },
-  { id: 'state', name: 'State', icon: '🔀' },
-  { id: 'er', name: 'ER Diagram', icon: '🗄️' },
-  { id: 'journey', name: 'Journey', icon: '🗺️' },
-  { id: 'gantt', name: 'Gantt', icon: '📅' },
-  { id: 'pie', name: 'Pie Chart', icon: '🥧' },
-  { id: 'mindmap', name: 'Mind Map', icon: '🧠' },
-] as const;
+  operationalBlocks: [
+    {
+      id: 'idea-capture',
+      label: 'Idea Capture',
+      description: 'Accepts the user\'s raw product or software idea via text or voice.',
+      kind: 'operational',
+      type: 'interaction',
+      children: ['fn-text-input', 'fn-prompt-history', 'fn-generate-command'],
+    },
+    {
+      id: 'semantic-parsing',
+      label: 'Semantic Parsing',
+      description: 'Interprets the idea and identifies capabilities, actors, and responsibilities.',
+      kind: 'operational',
+      type: 'transformation',
+      children: [
+        'fn-capability-extractor', 'fn-actor-extractor', 'fn-block-classifier',
+        'fn-relationship-extractor', 'fn-flow-extractor', 'fn-ambiguity-detector',
+      ],
+    },
+    {
+      id: 'architecture-modeling',
+      label: 'Architecture Modeling',
+      description: 'Creates and maintains the structured semantic graph used by the entire app.',
+      kind: 'operational',
+      type: 'subsystem',
+      children: [
+        'fn-node-registry', 'fn-edge-registry', 'fn-hierarchy-manager',
+        'fn-view-model-builder', 'fn-version-state',
+      ],
+    },
+    {
+      id: 'view-generation',
+      label: 'View Generation',
+      description: 'Transforms the model into readable operational, functional, and flow projections.',
+      kind: 'operational',
+      type: 'transformation',
+      children: [
+        'fn-canvas-renderer', 'fn-layout-engine', 'fn-group-renderer',
+        'fn-flow-renderer', 'fn-focus-mode',
+      ],
+    },
+    {
+      id: 'visual-editing',
+      label: 'Visual Editing',
+      description: 'Allows the user to refine the architecture directly on the visual canvas.',
+      kind: 'operational',
+      type: 'interaction',
+      children: ['fn-block-interaction-layer'],
+    },
+    {
+      id: 'reverse-explanation',
+      label: 'Reverse Explanation',
+      description: 'Turns the current model back into readable narrative and architecture summaries.',
+      kind: 'operational',
+      type: 'transformation',
+      children: [
+        'fn-summary-generator', 'fn-block-explainer',
+        'fn-flow-narrator', 'fn-change-narrator',
+      ],
+    },
+    {
+      id: 'project-persistence',
+      label: 'Project Persistence',
+      description: 'Stores the current project, version history, and supports import/export.',
+      kind: 'operational',
+      type: 'storage',
+      children: ['fn-project-store', 'fn-snapshot-store', 'fn-import-export-handler'],
+    },
+  ],
+
+  functionalBlocks: [
+    { id: 'fn-text-input', label: 'Text Input', kind: 'functional', type: 'input', description: 'Accepts raw app description from the user.' },
+    { id: 'fn-prompt-history', label: 'Prompt History', kind: 'functional', type: 'input', description: 'Stores previous prompts and refinements.' },
+    { id: 'fn-generate-command', label: 'Generate Command', kind: 'functional', type: 'input', description: 'Starts the generation process.' },
+    { id: 'fn-capability-extractor', label: 'Capability Extractor', kind: 'functional', type: 'parser', description: 'Finds the main capabilities in the app description.' },
+    { id: 'fn-actor-extractor', label: 'Actor Extractor', kind: 'functional', type: 'parser', description: 'Finds the main actors and roles.' },
+    { id: 'fn-block-classifier', label: 'Block Classifier', kind: 'functional', type: 'classifier', description: 'Assigns extracted concepts to block types.' },
+    { id: 'fn-relationship-extractor', label: 'Relationship Extractor', kind: 'functional', type: 'parser', description: 'Finds dependencies and interactions.' },
+    { id: 'fn-flow-extractor', label: 'Flow Extractor', kind: 'functional', type: 'parser', description: 'Builds core flows from described behavior.' },
+    { id: 'fn-ambiguity-detector', label: 'Ambiguity Detector', kind: 'functional', type: 'classifier', description: 'Flags vague or conflicting concepts.' },
+    { id: 'fn-node-registry', label: 'Node Registry', kind: 'functional', type: 'model', description: 'Stores all nodes/blocks.' },
+    { id: 'fn-edge-registry', label: 'Edge Registry', kind: 'functional', type: 'model', description: 'Stores all relationships.' },
+    { id: 'fn-hierarchy-manager', label: 'Hierarchy Manager', kind: 'functional', type: 'model', description: 'Maintains parent-child and grouping structures.' },
+    { id: 'fn-view-model-builder', label: 'View Model Builder', kind: 'functional', type: 'model', description: 'Creates per-view graph projections.' },
+    { id: 'fn-version-state', label: 'Version State', kind: 'functional', type: 'model', description: 'Tracks edits and versions over time.' },
+    { id: 'fn-canvas-renderer', label: 'Canvas Renderer', kind: 'functional', type: 'renderer', description: 'Renders blocks and edges on screen.' },
+    { id: 'fn-layout-engine', label: 'Layout Engine', kind: 'functional', type: 'renderer', description: 'Places elements for readability.' },
+    { id: 'fn-group-renderer', label: 'Group Renderer', kind: 'functional', type: 'renderer', description: 'Displays grouped structures.' },
+    { id: 'fn-flow-renderer', label: 'Flow Renderer', kind: 'functional', type: 'renderer', description: 'Displays ordered flows and branches.' },
+    { id: 'fn-focus-mode', label: 'Focus Mode', kind: 'functional', type: 'renderer', description: 'Shows one selected subdomain or flow.' },
+    { id: 'fn-block-interaction-layer', label: 'Block Interaction Layer', kind: 'functional', type: 'editor', description: 'Handles selection, dragging, renaming, and connection edits.' },
+    { id: 'fn-summary-generator', label: 'Summary Generator', kind: 'functional', type: 'generator', description: 'Generates a concise architecture summary.' },
+    { id: 'fn-block-explainer', label: 'Block Explainer', kind: 'functional', type: 'generator', description: 'Explains a selected block.' },
+    { id: 'fn-flow-narrator', label: 'Flow Narrator', kind: 'functional', type: 'generator', description: 'Explains a selected flow.' },
+    { id: 'fn-change-narrator', label: 'Change Narrator', kind: 'functional', type: 'generator', description: 'Explains changes between versions.' },
+    { id: 'fn-project-store', label: 'Project Store', kind: 'functional', type: 'persistence', description: 'Stores and restores project data.' },
+    { id: 'fn-snapshot-store', label: 'Snapshot Store', kind: 'functional', type: 'persistence', description: 'Stores version snapshots.' },
+    { id: 'fn-import-export-handler', label: 'Import/Export Handler', kind: 'functional', type: 'persistence', description: 'Imports and exports project JSON.' },
+  ],
+
+  relations: [
+    // Operational relations
+    { id: 'r-op-1', from: 'idea-capture', to: 'semantic-parsing', type: 'feeds' },
+    { id: 'r-op-2', from: 'semantic-parsing', to: 'architecture-modeling', type: 'transforms_into' },
+    { id: 'r-op-3', from: 'architecture-modeling', to: 'view-generation', type: 'feeds' },
+    { id: 'r-op-4', from: 'view-generation', to: 'visual-editing', type: 'feeds' },
+    { id: 'r-op-5', from: 'visual-editing', to: 'architecture-modeling', type: 'updates' },
+    { id: 'r-op-6', from: 'architecture-modeling', to: 'reverse-explanation', type: 'feeds' },
+    { id: 'r-op-7', from: 'architecture-modeling', to: 'project-persistence', type: 'persists_to' },
+  ],
+
+  flows: [
+    {
+      id: 'flow-text-to-blocks',
+      label: 'Text to Blocks',
+      steps: [
+        'User enters app description',
+        'User triggers generation',
+        'System extracts capabilities and relationships',
+        'System builds structured model',
+        'System generates operational and functional views',
+        'System generates summary text',
+        'User reviews the result',
+      ],
+    },
+    {
+      id: 'flow-blocks-to-text',
+      label: 'Blocks to Text',
+      steps: [
+        'User edits block or relation',
+        'System updates graph model',
+        'System refreshes affected layout',
+        'System regenerates explanation',
+        'System stores version delta',
+      ],
+    },
+    {
+      id: 'flow-iterative-refinement',
+      label: 'Iterative Refinement',
+      steps: [
+        'User requests a refinement',
+        'System translates request into model operations',
+        'System updates graph',
+        'System refreshes view and summary',
+        'System saves new version',
+      ],
+    },
+  ],
+};
+
+/**
+ * Category-color mapping for operational block types.
+ */
+export const BLOCK_TYPE_COLORS: Record<string, string> = {
+  interaction: 'hsl(187 85% 53%)',      // cyan
+  transformation: 'hsl(262 83% 58%)',   // purple
+  subsystem: 'hsl(142 76% 36%)',        // green
+  storage: 'hsl(38 92% 50%)',           // amber
+  capability: 'hsl(210 90% 55%)',       // blue
+  orchestration: 'hsl(340 80% 55%)',    // pink
+};
+
+/**
+ * Operational block positions for the default layout.
+ * Keys map to block IDs.
+ */
+export const DEFAULT_OPERATIONAL_POSITIONS: Record<string, { x: number; y: number }> = {
+  'idea-capture':          { x: 0,    y: 160 },
+  'semantic-parsing':      { x: 320,  y: 160 },
+  'architecture-modeling': { x: 640,  y: 160 },
+  'view-generation':       { x: 960,  y: 160 },
+  'visual-editing':        { x: 1280, y: 60  },
+  'reverse-explanation':   { x: 1280, y: 260 },
+  'project-persistence':   { x: 960,  y: 380 },
+};

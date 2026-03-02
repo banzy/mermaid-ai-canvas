@@ -1,35 +1,32 @@
 import { useEffect } from 'react';
 import { Command } from 'cmdk';
 import { useAppStore } from '@/stores/useAppStore';
-import { 
-  FileText, 
-  Download, 
-  Share2, 
-  Save, 
-  Plus, 
-  Settings, 
+import { MINDTOBLOCKS_SELF } from '@/lib/examples';
+import {
+  Plus,
+  Save,
   Sparkles,
-  Sun,
-  Moon,
   Trash2,
-  FolderOpen
+  FolderOpen,
+  Layers,
+  GitBranch,
+  Boxes,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { INITIAL_MERMAID } from '@/lib/schemas';
 
 export const CommandPalette = () => {
-  const { 
-    isCommandPaletteOpen, 
+  const {
+    isCommandPaletteOpen,
     setCommandPaletteOpen,
-    setCode,
+    setProject,
     saveProject,
     toggleAIPanel,
-    editor,
     projects,
     loadProject,
     currentProjectId,
     setCurrentProjectId,
-    clearChat
+    clearChat,
+    setSelectedView,
   } = useAppStore();
 
   useEffect(() => {
@@ -53,9 +50,9 @@ export const CommandPalette = () => {
   };
 
   const handleNew = () => {
-    setCode(INITIAL_MERMAID);
+    setProject(MINDTOBLOCKS_SELF);
     setCurrentProjectId(null);
-    toast.success('New diagram created');
+    toast.success('New project created');
   };
 
   const handleSave = () => {
@@ -63,28 +60,21 @@ export const CommandPalette = () => {
     toast.success('Project saved');
   };
 
-  const handleShare = async () => {
-    const encoded = btoa(encodeURIComponent(editor.code));
-    const url = `${window.location.origin}?diagram=${encoded}`;
-    await navigator.clipboard.writeText(url);
-    toast.success('Share link copied to clipboard');
-  };
-
   if (!isCommandPaletteOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50">
       {/* Backdrop */}
-      <div 
+      <div
         className="absolute inset-0 bg-background/80 backdrop-blur-sm animate-fade-in"
         onClick={() => setCommandPaletteOpen(false)}
       />
-      
+
       {/* Command Panel */}
       <div className="absolute left-1/2 top-1/4 w-full max-w-lg -translate-x-1/2 animate-scale-in">
         <Command className="glass-intense rounded-xl shadow-2xl overflow-hidden border border-border">
-          <Command.Input 
-            placeholder="Type a command or search..." 
+          <Command.Input
+            placeholder="Type a command or search..."
             className="w-full bg-transparent border-b border-border px-4 py-4 text-foreground placeholder:text-muted-foreground outline-none"
           />
           <Command.List className="p-2 max-h-80 overflow-y-auto scrollbar-thin">
@@ -93,15 +83,15 @@ export const CommandPalette = () => {
             </Command.Empty>
 
             <Command.Group heading="File" className="mb-2">
-              <Command.Item 
+              <Command.Item
                 onSelect={() => handleAction(handleNew)}
                 className="flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer text-muted-foreground data-[selected=true]:bg-secondary data-[selected=true]:text-foreground"
               >
                 <Plus className="h-4 w-4" />
-                <span>New Diagram</span>
+                <span>New Project</span>
                 <span className="ml-auto text-xs opacity-50">⌘N</span>
               </Command.Item>
-              <Command.Item 
+              <Command.Item
                 onSelect={() => handleAction(handleSave)}
                 className="flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer text-muted-foreground data-[selected=true]:bg-secondary data-[selected=true]:text-foreground"
               >
@@ -109,24 +99,41 @@ export const CommandPalette = () => {
                 <span>Save Project</span>
                 <span className="ml-auto text-xs opacity-50">⌘S</span>
               </Command.Item>
-              <Command.Item 
-                onSelect={() => handleAction(handleShare)}
+            </Command.Group>
+
+            <Command.Group heading="View" className="mb-2">
+              <Command.Item
+                onSelect={() => handleAction(() => setSelectedView('operational'))}
                 className="flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer text-muted-foreground data-[selected=true]:bg-secondary data-[selected=true]:text-foreground"
               >
-                <Share2 className="h-4 w-4" />
-                <span>Share Diagram</span>
+                <Boxes className="h-4 w-4" />
+                <span>Operational View</span>
+              </Command.Item>
+              <Command.Item
+                onSelect={() => handleAction(() => setSelectedView('functional'))}
+                className="flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer text-muted-foreground data-[selected=true]:bg-secondary data-[selected=true]:text-foreground"
+              >
+                <Layers className="h-4 w-4" />
+                <span>Functional View</span>
+              </Command.Item>
+              <Command.Item
+                onSelect={() => handleAction(() => setSelectedView('flow'))}
+                className="flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer text-muted-foreground data-[selected=true]:bg-secondary data-[selected=true]:text-foreground"
+              >
+                <GitBranch className="h-4 w-4" />
+                <span>Flow View</span>
               </Command.Item>
             </Command.Group>
 
             <Command.Group heading="AI" className="mb-2">
-              <Command.Item 
+              <Command.Item
                 onSelect={() => handleAction(toggleAIPanel)}
                 className="flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer text-muted-foreground data-[selected=true]:bg-secondary data-[selected=true]:text-foreground"
               >
                 <Sparkles className="h-4 w-4" />
                 <span>Toggle AI Panel</span>
               </Command.Item>
-              <Command.Item 
+              <Command.Item
                 onSelect={() => handleAction(clearChat)}
                 className="flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer text-muted-foreground data-[selected=true]:bg-secondary data-[selected=true]:text-foreground"
               >
@@ -138,7 +145,7 @@ export const CommandPalette = () => {
             {projects.length > 0 && (
               <Command.Group heading="Projects">
                 {projects.map((project) => (
-                  <Command.Item 
+                  <Command.Item
                     key={project.id}
                     onSelect={() => handleAction(() => {
                       loadProject(project.id);

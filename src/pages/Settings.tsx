@@ -31,7 +31,7 @@ import {
 
 const Settings = () => {
   const navigate = useNavigate();
-  const { settings, updateSettings, setSecureApiKey, getSecureApiKey, setSecureApiUrl, getSecureApiUrl, projects, editor } = useAppStore();
+  const { settings, updateSettings, setSecureApiKey, getSecureApiKey, setSecureApiUrl, getSecureApiUrl, projects } = useAppStore();
   const [apiUrl, setApiUrl] = useState('');
   const [openaiApiKey, setOpenaiApiKey] = useState('');
   const [groqApiKey, setGroqApiKey] = useState('');
@@ -242,7 +242,7 @@ const Settings = () => {
   };
 
   const handleClearStorage = () => {
-    localStorage.removeItem('mermaid-ai-studio-storage');
+    localStorage.removeItem('mindtoblocks-storage');
     toast.success('All data cleared. Refresh the page.');
     setConfirmClearOpen(false);
   };
@@ -259,7 +259,7 @@ const Settings = () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'mermaid-ai-studio-backup.json';
+    a.download = 'mindtoblocks-backup.json';
     a.click();
     URL.revokeObjectURL(url);
     toast.success('Data exported');

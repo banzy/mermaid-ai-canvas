@@ -2,17 +2,17 @@ import { create } from 'zustand';
 import { persist, devtools } from 'zustand/middleware';
 import { z } from 'zod';
 import {
-  EditorState,
-  ChatState,
-  Settings,
-  Message,
-  Project,
-  editorStateSchema,
-  chatStateSchema,
+  type MindProject,
+  type Message,
+  type Settings,
+  type ChatState,
+  type SelectedView,
+  type BlockNode,
+  type Relation,
+  type Project,
   settingsSchema,
-  projectSchema,
-  INITIAL_MERMAID
 } from '@/lib/schemas';
+import { MINDTOBLOCKS_SELF } from '@/lib/examples';
 import {
   getSecureData,
   setSecureData,
@@ -20,15 +20,26 @@ import {
 } from '@/lib/secureStorage';
 
 interface AppState {
-  // Editor slice
-  editor: EditorState;
-  setCode: (code: string) => void;
+  // ─── Project (source of truth) ──────────────────────────────────────────────
+  project: MindProject;
+  selectedView: SelectedView;
+  selectedNodeId: string | null;
+  isDirty: boolean;
+
+  setProject: (project: MindProject) => void;
+  setSelectedView: (view: SelectedView) => void;
   setSelectedNodeId: (id: string | null) => void;
-  setCursorPosition: (position: { line: number; column: number } | null) => void;
-  setErrors: (errors: { line: number; message: string }[]) => void;
   setIsDirty: (dirty: boolean) => void;
 
-  // Chat slice
+  // Block mutations
+  renameNode: (id: string, newLabel: string) => void;
+  updateNodeDescription: (id: string, description: string) => void;
+  addNode: (node: BlockNode) => void;
+  deleteNode: (id: string) => void;
+  addRelation: (relation: Relation) => void;
+  deleteRelation: (id: string) => void;
+
+  // ─── Chat ───────────────────────────────────────────────────────────────────
   chat: ChatState;
   addMessage: (message: Message) => void;
   updateLastMessage: (content: string) => void;
@@ -37,7 +48,7 @@ interface AppState {
   setAvailableModels: (models: string[]) => void;
   clearChat: () => void;
 
-  // Settings slice
+  // ─── Settings ───────────────────────────────────────────────────────────────
   settings: Settings;
   updateSettings: (settings: Partial<Settings>) => void;
   setSecureApiKey: (key: 'openaiApiKey' | 'groqApiKey', value: string) => Promise<void>;
@@ -45,7 +56,7 @@ interface AppState {
   setSecureApiUrl: (value: string) => Promise<void>;
   getSecureApiUrl: () => Promise<string | null>;
 
-  // Projects slice
+  // ─── Saved Projects ─────────────────────────────────────────────────────────
   projects: Project[];
   currentProjectId: string | null;
   saveProject: (name?: string) => void;
@@ -53,7 +64,7 @@ interface AppState {
   deleteProject: (id: string) => void;
   setCurrentProjectId: (id: string | null) => void;
 
-  // UI slice
+  // ─── UI ─────────────────────────────────────────────────────────────────────
   isAIPanelOpen: boolean;
   isPanelMinimized: boolean;
   aiPanelHeight: number;
@@ -66,14 +77,6 @@ interface AppState {
   isCommandPaletteOpen: boolean;
   setCommandPaletteOpen: (open: boolean) => void;
 }
-
-const initialEditorState: EditorState = {
-  code: INITIAL_MERMAID,
-  selectedNodeId: null,
-  cursorPosition: null,
-  errors: [],
-  isDirty: false,
-};
 
 const initialChatState: ChatState = {
   messages: [],
@@ -93,40 +96,99 @@ const initialSettings: Settings = {
   externalApiProvider: 'openai',
 };
 
-// Validation helpers
-const validateState = <T>(schema: z.ZodSchema<T>, data: unknown, fallback: T): T => {
-  const result = schema.safeParse(data);
-  return result.success ? result.data : fallback;
-};
-
 export const useAppStore = create<AppState>()(
   devtools(
     persist(
       (set, get) => ({
-        // Editor
-        editor: initialEditorState,
-        setCode: (code) => {
-          const validated = z.string().safeParse(code);
-          if (validated.success) {
-            set((state) => ({
-              editor: { ...state.editor, code: validated.data, isDirty: true }
-            }));
-          }
-        },
-        setSelectedNodeId: (id) => set((state) => ({
-          editor: { ...state.editor, selectedNodeId: id }
-        })),
-        setCursorPosition: (position) => set((state) => ({
-          editor: { ...state.editor, cursorPosition: position }
-        })),
-        setErrors: (errors) => set((state) => ({
-          editor: { ...state.editor, errors }
-        })),
-        setIsDirty: (dirty) => set((state) => ({
-          editor: { ...state.editor, isDirty: dirty }
-        })),
+        // ─── Project ────────────────────────────────────────────────────────────
+        project: MINDTOBLOCKS_SELF,
+        selectedView: 'operational' as SelectedView,
+        selectedNodeId: null,
+        isDirty: false,
 
-        // Chat
+        setProject: (project) => set({ project, isDirty: true }),
+        setSelectedView: (view) => set({ selectedView: view }),
+        setSelectedNodeId: (id) => set({ selectedNodeId: id }),
+        setIsDirty: (dirty) => set({ isDirty: dirty }),
+
+        // Block mutations
+        renameNode: (id, newLabel) => {
+          const { project } = get();
+          const updateBlocks = (blocks: BlockNode[]) =>
+            blocks.map(b => b.id === id ? { ...b, label: newLabel } : b);
+          set({
+            project: {
+              ...project,
+              operationalBlocks: updateBlocks(project.operationalBlocks),
+              functionalBlocks: updateBlocks(project.functionalBlocks),
+            },
+            isDirty: true,
+          });
+        },
+
+        updateNodeDescription: (id, description) => {
+          const { project } = get();
+          const updateBlocks = (blocks: BlockNode[]) =>
+            blocks.map(b => b.id === id ? { ...b, description } : b);
+          set({
+            project: {
+              ...project,
+              operationalBlocks: updateBlocks(project.operationalBlocks),
+              functionalBlocks: updateBlocks(project.functionalBlocks),
+            },
+            isDirty: true,
+          });
+        },
+
+        addNode: (node) => {
+          const { project } = get();
+          const target = node.kind === 'operational' ? 'operationalBlocks' : 'functionalBlocks';
+          set({
+            project: {
+              ...project,
+              [target]: [...project[target], node],
+            },
+            isDirty: true,
+          });
+        },
+
+        deleteNode: (id) => {
+          const { project, selectedNodeId } = get();
+          set({
+            project: {
+              ...project,
+              operationalBlocks: project.operationalBlocks.filter(b => b.id !== id),
+              functionalBlocks: project.functionalBlocks.filter(b => b.id !== id),
+              relations: project.relations.filter(r => r.from !== id && r.to !== id),
+            },
+            selectedNodeId: selectedNodeId === id ? null : selectedNodeId,
+            isDirty: true,
+          });
+        },
+
+        addRelation: (relation) => {
+          const { project } = get();
+          set({
+            project: {
+              ...project,
+              relations: [...project.relations, relation],
+            },
+            isDirty: true,
+          });
+        },
+
+        deleteRelation: (id) => {
+          const { project } = get();
+          set({
+            project: {
+              ...project,
+              relations: project.relations.filter(r => r.id !== id),
+            },
+            isDirty: true,
+          });
+        },
+
+        // ─── Chat ───────────────────────────────────────────────────────────────
         chat: initialChatState,
         addMessage: (message) => {
           const validated = z.object({
@@ -165,7 +227,7 @@ export const useAppStore = create<AppState>()(
           chat: { ...state.chat, messages: [] }
         })),
 
-        // Settings
+        // ─── Settings ───────────────────────────────────────────────────────────
         settings: initialSettings,
         updateSettings: (newSettings) => {
           const current = get().settings;
@@ -178,13 +240,10 @@ export const useAppStore = create<AppState>()(
         setSecureApiKey: async (keyName, value) => {
           try {
             if (value) {
-              // Encrypt and store the API key securely
               await setSecureData(keyName, value);
             } else {
-              // Remove the key if empty
               removeSecureData(keyName);
             }
-            // Store a flag in regular settings to indicate the key exists
             const current = get().settings;
             set({
               settings: {
@@ -233,46 +292,45 @@ export const useAppStore = create<AppState>()(
           }
         },
 
-        // Projects
+        // ─── Saved Projects ─────────────────────────────────────────────────────
         projects: [],
         currentProjectId: null,
         saveProject: (name) => {
-          const { editor, projects, currentProjectId } = get();
+          const { project, projects, currentProjectId } = get();
           const now = Date.now();
 
           if (currentProjectId) {
-            // Update existing project
             set({
               projects: projects.map(p =>
                 p.id === currentProjectId
-                  ? { ...p, code: editor.code, updatedAt: now, name: name || p.name }
+                  ? { ...p, project, updatedAt: now, name: name || p.name }
                   : p
               ),
-              editor: { ...editor, isDirty: false }
+              isDirty: false,
             });
           } else {
-            // Create new project
             const newProject: Project = {
               id: crypto.randomUUID(),
               name: name || `Project ${projects.length + 1}`,
-              code: editor.code,
+              project,
               createdAt: now,
               updatedAt: now,
             };
             set({
               projects: [...projects, newProject],
               currentProjectId: newProject.id,
-              editor: { ...editor, isDirty: false }
+              isDirty: false,
             });
           }
         },
         loadProject: (id) => {
-          const project = get().projects.find(p => p.id === id);
-          if (project) {
-            set((state) => ({
-              editor: { ...state.editor, code: project.code, isDirty: false },
+          const saved = get().projects.find(p => p.id === id);
+          if (saved) {
+            set({
+              project: saved.project,
               currentProjectId: id,
-            }));
+              isDirty: false,
+            });
           }
         },
         deleteProject: (id) => {
@@ -283,7 +341,7 @@ export const useAppStore = create<AppState>()(
         },
         setCurrentProjectId: (id) => set({ currentProjectId: id }),
 
-        // UI
+        // ─── UI ─────────────────────────────────────────────────────────────────
         isAIPanelOpen: true,
         isPanelMinimized: false,
         aiPanelHeight: 300,
@@ -297,9 +355,10 @@ export const useAppStore = create<AppState>()(
         setCommandPaletteOpen: (open) => set({ isCommandPaletteOpen: open }),
       }),
       {
-        name: 'mermaid-ai-studio-storage',
+        name: 'mindtoblocks-storage',
         partialize: (state) => ({
-          editor: { code: state.editor.code },
+          project: state.project,
+          selectedView: state.selectedView,
           chat: { messages: state.chat.messages },
           settings: state.settings,
           projects: state.projects,
@@ -307,6 +366,6 @@ export const useAppStore = create<AppState>()(
         }),
       }
     ),
-    { name: 'MermaidAIStudio' }
+    { name: 'MindtoBlocks' }
   )
 );

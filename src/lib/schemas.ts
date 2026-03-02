@@ -1,70 +1,98 @@
 import { z } from 'zod';
 
-// Message schema
+// ─── Block & Relation Types ────────────────────────────────────────────────────
+
+export const blockKindSchema = z.enum(['operational', 'functional', 'flow']);
+export type BlockKind = z.infer<typeof blockKindSchema>;
+
+export const blockTypeSchema = z.enum([
+  // Operational
+  'capability', 'subsystem', 'orchestration', 'storage', 'interaction', 'transformation',
+  // Functional
+  'input', 'parser', 'classifier', 'model', 'renderer', 'editor', 'generator', 'persistence',
+  // Flow
+  'start', 'action', 'decision', 'state', 'output', 'external_actor',
+]);
+export type BlockType = z.infer<typeof blockTypeSchema>;
+
+export const relationTypeSchema = z.enum([
+  'triggers', 'feeds', 'depends_on', 'updates', 'contains',
+  'transforms_into', 'explains', 'persists_to',
+]);
+export type RelationType = z.infer<typeof relationTypeSchema>;
+
+// ─── Core Entities ─────────────────────────────────────────────────────────────
+
+export const blockNodeSchema = z.object({
+  id: z.string(),
+  label: z.string(),
+  description: z.string().optional(),
+  kind: blockKindSchema,
+  type: blockTypeSchema,
+  children: z.array(z.string()).optional(),
+  metadata: z.record(z.unknown()).optional(),
+});
+export type BlockNode = z.infer<typeof blockNodeSchema>;
+
+export const relationSchema = z.object({
+  id: z.string(),
+  from: z.string(),
+  to: z.string(),
+  type: relationTypeSchema,
+  label: z.string().optional(),
+});
+export type Relation = z.infer<typeof relationSchema>;
+
+export const flowStepSchema = z.object({
+  id: z.string(),
+  label: z.string(),
+  type: z.enum(['start', 'action', 'decision', 'end']).default('action'),
+});
+
+export const flowDefinitionSchema = z.object({
+  id: z.string(),
+  label: z.string(),
+  steps: z.array(z.string()),
+});
+export type FlowDefinition = z.infer<typeof flowDefinitionSchema>;
+
+// ─── MindProject ───────────────────────────────────────────────────────────────
+
+export const selectedViewSchema = z.enum(['operational', 'functional', 'flow']);
+export type SelectedView = z.infer<typeof selectedViewSchema>;
+
+export const mindProjectSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  description: z.string(),
+  operationalBlocks: z.array(blockNodeSchema),
+  functionalBlocks: z.array(blockNodeSchema),
+  flowBlocks: z.array(blockNodeSchema).optional(),
+  relations: z.array(relationSchema),
+  flows: z.array(flowDefinitionSchema),
+});
+export type MindProject = z.infer<typeof mindProjectSchema>;
+
+// ─── Chat / Messages (kept from original) ──────────────────────────────────────
+
 export const messageSchema = z.object({
   id: z.string(),
   role: z.enum(['user', 'assistant']),
   content: z.string(),
   timestamp: z.number(),
 });
-
 export type Message = z.infer<typeof messageSchema>;
 
-// API Schemas
-export const generateRequestSchema = z.object({
-  prompt: z.string().min(1),
-  history: z.array(messageSchema).optional(),
-});
-
-export const modelsResponseSchema = z.object({
-  models: z.array(z.string()),
-});
-
-export const explainRequestSchema = z.object({
-  mermaid: z.string().min(1),
-});
-
-export const explainResponseSchema = z.object({
-  explanation: z.string(),
-});
-
-export const refineRequestSchema = z.object({
-  mermaid: z.string().min(1),
-  instruction: z.string().min(1),
-});
-
-export const refineResponseSchema = z.object({
-  mermaid: z.string(),
-});
-
-// Editor State Schema
-export const editorStateSchema = z.object({
-  code: z.string(),
-  selectedNodeId: z.string().nullable(),
-  cursorPosition: z.object({
-    line: z.number(),
-    column: z.number(),
-  }).nullable(),
-  errors: z.array(z.object({
-    line: z.number(),
-    message: z.string(),
-  })),
-  isDirty: z.boolean(),
-});
-
-export type EditorState = z.infer<typeof editorStateSchema>;
-
-// Chat State Schema
 export const chatStateSchema = z.object({
   messages: z.array(messageSchema),
   isStreaming: z.boolean(),
   currentModel: z.string().nullable(),
   availableModels: z.array(z.string()),
 });
-
 export type ChatState = z.infer<typeof chatStateSchema>;
 
-// Settings Schema
+// ─── Settings (kept from original) ─────────────────────────────────────────────
+
 export const settingsSchema = z.object({
   apiUrl: z.string().url().or(z.literal('')).or(z.literal('***ENCRYPTED***')),
   defaultModel: z.string(),
@@ -75,29 +103,26 @@ export const settingsSchema = z.object({
   useExternalApi: z.boolean().optional(),
   externalApiProvider: z.enum(['openai', 'groq']).optional(),
 });
-
 export type Settings = z.infer<typeof settingsSchema>;
 
-// Project Schema
+// ─── Project persistence ───────────────────────────────────────────────────────
+
 export const projectSchema = z.object({
   id: z.string(),
   name: z.string(),
-  code: z.string(),
+  project: mindProjectSchema,
   createdAt: z.number(),
   updatedAt: z.number(),
 });
-
 export type Project = z.infer<typeof projectSchema>;
 
-// Initial Mermaid Code
-export const INITIAL_MERMAID = `flowchart TD
-    A[🚀 Start] --> B{Decision Point}
-    B -->|Yes| C[Process A]
-    B -->|No| D[Process B]
-    C --> E[Result 1]
-    D --> E
-    E --> F[🎯 End]
-    
-    style A fill:#0ea5e9,stroke:#0284c7,color:#fff
-    style F fill:#8b5cf6,stroke:#7c3aed,color:#fff
-    style B fill:#1e293b,stroke:#334155,color:#fff`;
+// ─── API Schemas ───────────────────────────────────────────────────────────────
+
+export const generateRequestSchema = z.object({
+  prompt: z.string().min(1),
+  history: z.array(messageSchema).optional(),
+});
+
+export const modelsResponseSchema = z.object({
+  models: z.array(z.string()),
+});

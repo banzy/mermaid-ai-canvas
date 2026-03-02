@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '@/stores/useAppStore';
+import { MINDTOBLOCKS_SELF } from '@/lib/examples';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
@@ -18,39 +18,37 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { 
-  FileText, 
-  Download, 
-  Share2, 
-  Save, 
-  Plus, 
-  Settings, 
+import {
+  Download,
+  Save,
+  Plus,
+  Settings,
   Command,
   Sparkles,
   ChevronDown,
   FolderOpen,
-  LayoutGrid,
   Cloud,
-  Server
+  Server,
+  Boxes,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { INITIAL_MERMAID } from '@/lib/schemas';
 
 export const Header = () => {
   const navigate = useNavigate();
-  const { 
-    editor, 
+  const {
+    project,
     projects,
     currentProjectId,
-    saveProject, 
+    isDirty,
+    saveProject,
     loadProject,
-    setCode, 
+    setProject,
     setCommandPaletteOpen,
     toggleAIPanel,
     isAIPanelOpen,
     setCurrentProjectId,
     settings,
-    updateSettings
+    updateSettings,
   } = useAppStore();
 
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
@@ -60,9 +58,9 @@ export const Header = () => {
   const currentProject = projects.find(p => p.id === currentProjectId);
 
   const handleNew = () => {
-    setCode(INITIAL_MERMAID);
+    setProject(MINDTOBLOCKS_SELF);
     setCurrentProjectId(null);
-    toast.success('New diagram created');
+    toast.success('New project created');
   };
 
   const handleSave = () => {
@@ -83,37 +81,16 @@ export const Header = () => {
     }
   };
 
-  const handleExportSVG = () => {
-    const svg = document.querySelector('.mermaid svg');
-    if (svg) {
-      const svgData = new XMLSerializer().serializeToString(svg);
-      const blob = new Blob([svgData], { type: 'image/svg+xml' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${currentProject?.name || 'diagram'}.svg`;
-      a.click();
-      URL.revokeObjectURL(url);
-      toast.success('SVG exported');
-    }
-  };
-
-  const handleExportMermaid = () => {
-    const blob = new Blob([editor.code], { type: 'text/plain' });
+  const handleExportJSON = () => {
+    const json = JSON.stringify(project, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${currentProject?.name || 'diagram'}.mmd`;
+    a.download = `${project.name || 'mindtoblocks-project'}.json`;
     a.click();
     URL.revokeObjectURL(url);
-    toast.success('Mermaid file exported');
-  };
-
-  const handleShare = async () => {
-    const encoded = btoa(encodeURIComponent(editor.code));
-    const url = `${window.location.origin}?diagram=${encoded}`;
-    await navigator.clipboard.writeText(url);
-    toast.success('Share link copied to clipboard');
+    toast.success('Project JSON exported');
   };
 
   const handleToggleExternalApi = () => {
@@ -128,17 +105,13 @@ export const Header = () => {
         {/* Logo & Title */}
         <div className="flex items-center gap-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-ai-accent glow-primary">
-            <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5 text-primary-foreground">
-              <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M2 17L12 22L22 17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M2 12L12 17L22 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
+            <Boxes className="h-5 w-5 text-primary-foreground" />
           </div>
           <div>
-            <h1 className="font-semibold text-foreground">Mermaid AI Studio</h1>
+            <h1 className="font-semibold text-foreground">MindtoBlocks</h1>
             <p className="text-xs text-muted-foreground">
-              {currentProject ? currentProject.name : 'Untitled'}
-              {editor.isDirty && <span className="text-warning ml-1">•</span>}
+              {currentProject ? currentProject.name : project.name}
+              {isDirty && <span className="text-warning ml-1">•</span>}
             </p>
           </div>
         </div>
@@ -200,7 +173,7 @@ export const Header = () => {
             Save
           </Button>
 
-          {/* Export Menu */}
+          {/* Export */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="sm">
@@ -210,28 +183,12 @@ export const Header = () => {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuItem onClick={handleExportSVG}>
-                <FileText className="h-4 w-4 mr-2" />
-                Export as SVG
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleExportMermaid}>
-                <FileText className="h-4 w-4 mr-2" />
-                Export as .mmd
+              <DropdownMenuItem onClick={handleExportJSON}>
+                <Download className="h-4 w-4 mr-2" />
+                Export as JSON
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-
-          {/* Share */}
-          <Button variant="ghost" size="sm" onClick={handleShare}>
-            <Share2 className="h-4 w-4 mr-1.5" />
-            Share
-          </Button>
-
-          {/* Examples */}
-          <Button variant="ghost" size="sm" onClick={() => navigate('/examples')}>
-            <LayoutGrid className="h-4 w-4 mr-1.5" />
-            Examples
-          </Button>
 
           {/* Settings */}
           <Button variant="ghost" size="icon" onClick={() => navigate('/settings')}>
@@ -281,23 +238,23 @@ export const Header = () => {
                 No saved projects yet.
               </p>
             ) : (
-              projects.map((project) => (
+              projects.map((proj) => (
                 <button
-                  key={project.id}
+                  key={proj.id}
                   onClick={() => {
-                    loadProject(project.id);
+                    loadProject(proj.id);
                     setProjectsDialogOpen(false);
-                    toast.success(`Opened "${project.name}"`);
+                    toast.success(`Opened "${proj.name}"`);
                   }}
                   className="w-full flex items-center justify-between p-3 rounded-lg hover:bg-secondary transition-colors text-left"
                 >
                   <div>
-                    <p className="font-medium">{project.name}</p>
+                    <p className="font-medium">{proj.name}</p>
                     <p className="text-xs text-muted-foreground">
-                      {new Date(project.updatedAt).toLocaleDateString()}
+                      {new Date(proj.updatedAt).toLocaleDateString()}
                     </p>
                   </div>
-                  {project.id === currentProjectId && (
+                  {proj.id === currentProjectId && (
                     <span className="text-xs text-primary">Current</span>
                   )}
                 </button>
