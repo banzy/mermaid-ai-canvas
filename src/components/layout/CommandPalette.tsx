@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { Command } from 'cmdk';
 import { useAppStore } from '@/stores/useAppStore';
-import { MINDTOBLOCKS_SELF } from '@/lib/examples';
+import { EMPTY_PROJECT } from '@/lib/examples';
 import {
   Plus,
   Save,
@@ -50,7 +50,7 @@ export const CommandPalette = () => {
   };
 
   const handleNew = () => {
-    setProject(MINDTOBLOCKS_SELF);
+    setProject({ ...EMPTY_PROJECT, id: crypto.randomUUID() });
     setCurrentProjectId(null);
     toast.success('New project created');
   };

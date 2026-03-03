@@ -1,6 +1,19 @@
 import type { MindProject } from './schemas';
 
 /**
+ * Blank project for the "New" action.
+ */
+export const EMPTY_PROJECT: MindProject = {
+  id: 'new-project',
+  name: 'New Project',
+  description: 'Start describing your system architecture...',
+  operationalBlocks: [],
+  functionalBlocks: [],
+  relations: [],
+  flows: [],
+};
+
+/**
  * Running Coach App — used as the default/demo project.
  * A smart iOS running companion with real-time coaching, GPS tracking, and voice feedback.
  */
@@ -8,7 +21,134 @@ export const MINDTOBLOCKS_SELF: MindProject = {
   id: 'running-coach-app',
   name: 'Running Coach',
   description:
-    'A smart iOS running companion that uses GPS tracking, real-time pace analysis, and AI coaching to guide runners with voice feedback, mixing seamlessly with their music.',
+    `Operational Blocks (System Behavior View)
+[App Lifecycle Manager]
+    ↓
+[Permission Manager]
+    ↓
+[Run Session Control]
+    ↓
+[Sensor Acquisition Layer]
+    ↓
+[Metric Computation Engine]
+    ↓
+[Coach Decision Engine]
+    ↓
+[Speech Output & Audio Mixing]
+    ↓
+[User Feedback Loop]
+
+Parallel Blocks:
+[Voice Command Processor] → [Run Session Control]
+[Local Persistence Manager] ← [Metric Computation Engine]
+[Post-Run Summary Generator] ← [Run Session Control]
+[History & Analytics Module] ← [Local Persistence Manager]
+[Settings & Personalization] → [Coach Decision Engine]
+[Reliability & Background Handler] ↔ [Run Session Control]
+
+Flow Chart Blocks (User Journey View)
+[Start App]
+    ↓
+[Onboarding / Permissions]
+    ↓
+[Home Screen]
+    ↓
+[Start Run]
+    ↓
+[Initialize Audio Session]
+    ↓
+[Initialize GPS & Sensors]
+    ↓
+[Running State]
+
+Running State Loop:
+    → [Collect Sensor Data]
+    → [Compute Metrics]
+    → [Update UI]
+    → [Check Coach Triggers]
+    → [Generate Coach Message]
+    → [Speak Message]
+    → (repeat)
+
+User Actions:
+[Pause] → [Paused State]
+[Resume] → [Running State]
+[Stop Run] → [Finalize Metrics]
+    ↓
+[Save Run Data]
+    ↓
+[Generate Summary]
+    ↓
+[Summary Screen]
+    ↓
+[History / Exit]
+
+Structural Blocks (Architecture View)
+========================
+UI LAYER
+========================
+[HomeView]
+[RunView]
+[SummaryView]
+[HistoryView]
+[SettingsView]
+
+========================
+STATE LAYER
+========================
+[RunSessionStateMachine]
+[RunSessionManager]
+
+========================
+SENSOR LAYER
+========================
+[LocationService]
+[MotionService]
+[HealthService]
+
+========================
+COMPUTATION LAYER
+========================
+[MetricsEngine]
+[SmoothingFilter]
+[SplitEngine]
+
+========================
+COACH LAYER
+========================
+[CoachManager]
+[TriggerEngine]
+[MessagePlanner]
+[UserProfileModel]
+
+========================
+AUDIO LAYER
+========================
+[AudioSessionController]
+[SpeechManager]
+[SpeechQueue]
+
+========================
+VOICE COMMAND LAYER
+========================
+[VoiceCommandManager]
+[IntentParser]
+
+========================
+STORAGE LAYER
+========================
+[RunStorageManager]
+[Run Model]
+[RunPoint Model]
+[CoachEvent Model]
+[SettingsModel]
+
+========================
+SYSTEM UTILITIES
+========================
+[BackgroundTaskCoordinator]
+[ConnectivityMonitor]
+[Logger]`,
 
   // ── Operational Blocks (System Behavior View) ────────────────────────────────
 
@@ -123,53 +263,53 @@ export const MINDTOBLOCKS_SELF: MindProject = {
 
   functionalBlocks: [
     // UI Layer
-    { id: 'fn-home-view', label: 'HomeView', kind: 'functional', type: 'renderer', description: 'Main screen with Start Run, History, and Settings options.' },
-    { id: 'fn-run-view', label: 'RunView', kind: 'functional', type: 'renderer', description: 'Active run screen showing real-time metrics, map, and controls.' },
-    { id: 'fn-summary-view', label: 'SummaryView', kind: 'functional', type: 'renderer', description: 'Post-run summary with stats, charts, and sharing options.' },
-    { id: 'fn-history-view', label: 'HistoryListView', kind: 'functional', type: 'renderer', description: 'List of past runs with filtering and search.' },
-    { id: 'fn-run-detail-view', label: 'RunDetailView', kind: 'functional', type: 'renderer', description: 'Detailed view of a single past run with map and splits.' },
-    { id: 'fn-settings-view', label: 'SettingsView', kind: 'functional', type: 'renderer', description: 'Preferences for coaching, voice, units, and privacy.' },
+    { id: 'fn-home-view',        label: 'HomeView',        kind: 'functional', type: 'renderer',    description: 'Main screen with Start Run, History, and Settings options.', metadata: { layer: 'UI Layer' } },
+    { id: 'fn-run-view',         label: 'RunView',         kind: 'functional', type: 'renderer',    description: 'Active run screen showing real-time metrics, map, and controls.', metadata: { layer: 'UI Layer' } },
+    { id: 'fn-summary-view',     label: 'SummaryView',     kind: 'functional', type: 'renderer',    description: 'Post-run summary with stats, charts, and sharing options.', metadata: { layer: 'UI Layer' } },
+    { id: 'fn-history-view',     label: 'HistoryListView', kind: 'functional', type: 'renderer',    description: 'List of past runs with filtering and search.', metadata: { layer: 'UI Layer' } },
+    { id: 'fn-run-detail-view',  label: 'RunDetailView',   kind: 'functional', type: 'renderer',    description: 'Detailed view of a single past run with map and splits.', metadata: { layer: 'UI Layer' } },
+    { id: 'fn-settings-view',    label: 'SettingsView',    kind: 'functional', type: 'renderer',    description: 'Preferences for coaching, voice, units, and privacy.', metadata: { layer: 'UI Layer' } },
 
     // State & Session Layer
-    { id: 'fn-session-state-machine', label: 'RunSessionStateMachine', kind: 'functional', type: 'model', description: 'State machine: Idle → Preparing → Running → Paused → Finishing → Summary.' },
-    { id: 'fn-session-manager', label: 'RunSessionManager', kind: 'functional', type: 'model', description: 'Single source of truth for the active run session.' },
+    { id: 'fn-session-state-machine', label: 'RunSessionStateMachine', kind: 'functional', type: 'model', description: 'State machine: Idle → Preparing → Running → Paused → Finishing → Summary.', metadata: { layer: 'State Layer' } },
+    { id: 'fn-session-manager',       label: 'RunSessionManager',      kind: 'functional', type: 'model', description: 'Single source of truth for the active run session.', metadata: { layer: 'State Layer' } },
 
     // Sensor Layer
-    { id: 'fn-location-service', label: 'LocationService', kind: 'functional', type: 'input', description: 'CoreLocation wrapper for GPS sampling and altitude.' },
-    { id: 'fn-motion-service', label: 'MotionService', kind: 'functional', type: 'input', description: 'CoreMotion wrapper for cadence and step data (optional).' },
-    { id: 'fn-health-service', label: 'HealthService', kind: 'functional', type: 'input', description: 'HealthKit wrapper for heart-rate monitoring (optional).' },
+    { id: 'fn-location-service', label: 'LocationService', kind: 'functional', type: 'input', description: 'CoreLocation wrapper for GPS sampling and altitude.', metadata: { layer: 'Sensor Layer' } },
+    { id: 'fn-motion-service',   label: 'MotionService',   kind: 'functional', type: 'input', description: 'CoreMotion wrapper for cadence and step data (optional).', metadata: { layer: 'Sensor Layer' } },
+    { id: 'fn-health-service',   label: 'HealthService',   kind: 'functional', type: 'input', description: 'HealthKit wrapper for heart-rate monitoring (optional).', metadata: { layer: 'Sensor Layer' } },
 
     // Computation Layer
-    { id: 'fn-metrics-engine', label: 'MetricsEngine', kind: 'functional', type: 'parser', description: 'Calculates distance, pace, and elevation from raw sensor data.' },
-    { id: 'fn-smoothing-filter', label: 'SmoothingFilter', kind: 'functional', type: 'parser', description: 'Filters GPS jitter for accurate route tracking.' },
-    { id: 'fn-split-engine', label: 'SplitEngine', kind: 'functional', type: 'parser', description: 'Manages lap/split calculations and per-km breakdowns.' },
+    { id: 'fn-metrics-engine',   label: 'MetricsEngine',   kind: 'functional', type: 'parser', description: 'Calculates distance, pace, and elevation from raw sensor data.', metadata: { layer: 'Computation Layer' } },
+    { id: 'fn-smoothing-filter', label: 'SmoothingFilter', kind: 'functional', type: 'parser', description: 'Filters GPS jitter for accurate route tracking.', metadata: { layer: 'Computation Layer' } },
+    { id: 'fn-split-engine',     label: 'SplitEngine',     kind: 'functional', type: 'parser', description: 'Manages lap/split calculations and per-km breakdowns.', metadata: { layer: 'Computation Layer' } },
 
     // Coach Layer
-    { id: 'fn-coach-manager', label: 'CoachManager', kind: 'functional', type: 'classifier', description: 'Orchestrates coaching logic and coordinates triggers with speech.' },
-    { id: 'fn-trigger-engine', label: 'TriggerEngine', kind: 'functional', type: 'classifier', description: 'Evaluates rules/events: distance milestones, pace deviation, fatigue.' },
-    { id: 'fn-message-planner', label: 'MessagePlanner', kind: 'functional', type: 'generator', description: 'Selects and formats coaching messages from templates (AI later).' },
-    { id: 'fn-user-profile-model', label: 'UserProfileModel', kind: 'functional', type: 'model', description: 'Stores user tone, intensity, and coaching preferences.' },
+    { id: 'fn-coach-manager',      label: 'CoachManager',     kind: 'functional', type: 'classifier', description: 'Orchestrates coaching logic and coordinates triggers with speech.', metadata: { layer: 'Coach Layer' } },
+    { id: 'fn-trigger-engine',     label: 'TriggerEngine',    kind: 'functional', type: 'classifier', description: 'Evaluates rules/events: distance milestones, pace deviation, fatigue.', metadata: { layer: 'Coach Layer' } },
+    { id: 'fn-message-planner',    label: 'MessagePlanner',   kind: 'functional', type: 'generator',  description: 'Selects and formats coaching messages from templates (AI later).', metadata: { layer: 'Coach Layer' } },
+    { id: 'fn-user-profile-model', label: 'UserProfileModel', kind: 'functional', type: 'model',      description: 'Stores user tone, intensity, and coaching preferences.', metadata: { layer: 'Coach Layer' } },
 
     // Audio Layer
-    { id: 'fn-audio-session-controller', label: 'AudioSessionController', kind: 'functional', type: 'editor', description: 'Configures AVAudioSession with mixWithOthers and duckOthers.' },
-    { id: 'fn-speech-manager', label: 'SpeechManager', kind: 'functional', type: 'generator', description: 'AVSpeechSynthesizer wrapper for text-to-speech output.' },
-    { id: 'fn-speech-queue', label: 'SpeechQueue', kind: 'functional', type: 'generator', description: 'Prevents overlaps, prioritizes urgent cues.' },
+    { id: 'fn-audio-session-controller', label: 'AudioSessionController', kind: 'functional', type: 'editor',    description: 'Configures AVAudioSession with mixWithOthers and duckOthers.', metadata: { layer: 'Audio Layer' } },
+    { id: 'fn-speech-manager',           label: 'SpeechManager',          kind: 'functional', type: 'generator', description: 'AVSpeechSynthesizer wrapper for text-to-speech output.', metadata: { layer: 'Audio Layer' } },
+    { id: 'fn-speech-queue',             label: 'SpeechQueue',            kind: 'functional', type: 'generator', description: 'Prevents overlaps, prioritizes urgent cues.', metadata: { layer: 'Audio Layer' } },
 
     // Voice Command Layer
-    { id: 'fn-voice-command-manager', label: 'VoiceCommandManager', kind: 'functional', type: 'input', description: 'SFSpeechRecognizer wrapper for hands-free control.' },
-    { id: 'fn-intent-parser', label: 'IntentParser', kind: 'functional', type: 'classifier', description: 'Maps recognized phrases to run-control actions.' },
+    { id: 'fn-voice-command-manager', label: 'VoiceCommandManager', kind: 'functional', type: 'input',      description: 'SFSpeechRecognizer wrapper for hands-free control.', metadata: { layer: 'Voice Command Layer' } },
+    { id: 'fn-intent-parser',         label: 'IntentParser',        kind: 'functional', type: 'classifier', description: 'Maps recognized phrases to run-control actions.', metadata: { layer: 'Voice Command Layer' } },
 
     // Storage Layer
-    { id: 'fn-run-storage-manager', label: 'RunStorageManager', kind: 'functional', type: 'persistence', description: 'CoreData/SQLite wrapper for run persistence.' },
-    { id: 'fn-run-model', label: 'Run Model', kind: 'functional', type: 'persistence', description: 'Data model for a single run session.' },
-    { id: 'fn-runpoint-model', label: 'RunPoint Model', kind: 'functional', type: 'persistence', description: 'Data model for GPS route sample points.' },
-    { id: 'fn-coach-event-model', label: 'CoachEvent Model', kind: 'functional', type: 'persistence', description: 'Data model for coaching events and triggers.' },
-    { id: 'fn-settings-model', label: 'SettingsModel', kind: 'functional', type: 'persistence', description: 'Data model for user preferences and settings.' },
+    { id: 'fn-run-storage-manager', label: 'RunStorageManager', kind: 'functional', type: 'persistence', description: 'CoreData/SQLite wrapper for run persistence.', metadata: { layer: 'Storage Layer' } },
+    { id: 'fn-run-model',           label: 'Run Model',          kind: 'functional', type: 'persistence', description: 'Data model for a single run session.', metadata: { layer: 'Storage Layer' } },
+    { id: 'fn-runpoint-model',      label: 'RunPoint Model',     kind: 'functional', type: 'persistence', description: 'Data model for GPS route sample points.', metadata: { layer: 'Storage Layer' } },
+    { id: 'fn-coach-event-model',   label: 'CoachEvent Model',   kind: 'functional', type: 'persistence', description: 'Data model for coaching events and triggers.', metadata: { layer: 'Storage Layer' } },
+    { id: 'fn-settings-model',      label: 'SettingsModel',      kind: 'functional', type: 'persistence', description: 'Data model for user preferences and settings.', metadata: { layer: 'Storage Layer' } },
 
     // System Utilities
-    { id: 'fn-background-task-coordinator', label: 'BackgroundTaskCoordinator', kind: 'functional', type: 'model', description: 'Manages background updates and resilience during app transitions.' },
-    { id: 'fn-connectivity-monitor', label: 'ConnectivityMonitor', kind: 'functional', type: 'model', description: 'Monitors network reachability for optional sync features.' },
-    { id: 'fn-logger', label: 'Logger', kind: 'functional', type: 'model', description: 'Debug logging and analytics hooks.' },
+    { id: 'fn-background-task-coordinator', label: 'BackgroundTaskCoordinator', kind: 'functional', type: 'model', description: 'Manages background updates and resilience during app transitions.', metadata: { layer: 'System Utilities' } },
+    { id: 'fn-connectivity-monitor',        label: 'ConnectivityMonitor',        kind: 'functional', type: 'model', description: 'Monitors network reachability for optional sync features.', metadata: { layer: 'System Utilities' } },
+    { id: 'fn-logger',                      label: 'Logger',                     kind: 'functional', type: 'model', description: 'Debug logging and analytics hooks.', metadata: { layer: 'System Utilities' } },
   ],
 
   // ── Relations (Operational System Behavior) ──────────────────────────────────

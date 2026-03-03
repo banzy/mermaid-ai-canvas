@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '@/stores/useAppStore';
-import { MINDTOBLOCKS_SELF } from '@/lib/examples';
+import { EMPTY_PROJECT } from '@/lib/examples';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -58,7 +58,7 @@ export const Header = () => {
   const currentProject = projects.find(p => p.id === currentProjectId);
 
   const handleNew = () => {
-    setProject(MINDTOBLOCKS_SELF);
+    setProject({ ...EMPTY_PROJECT, id: crypto.randomUUID() });
     setCurrentProjectId(null);
     toast.success('New project created');
   };
