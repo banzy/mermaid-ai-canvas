@@ -11,6 +11,8 @@ import {
   useNodesState,
   useEdgesState,
   BackgroundVariant,
+  Handle,
+  Position,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useAppStore } from '@/stores/useAppStore';
@@ -19,69 +21,126 @@ import { cn } from '@/lib/utils';
 import type { BlockNode } from '@/lib/schemas';
 import OperationalNode from './OperationalNode';
 
-// ── Layer group layout constants ───────────────────────────────────────────────
+// ── Color palette per layer ────────────────────────────────────────────────────
 
-const LAYER_COLORS: Record<string, string> = {
-  'UI Layer':            'hsl(210 90% 60%)',
-  'State Layer':         'hsl(262 83% 65%)',
-  'Sensor Layer':        'hsl(142 70% 45%)',
-  'Computation Layer':   'hsl(38 92% 55%)',
-  'Coach Layer':         'hsl(340 80% 60%)',
-  'Audio Layer':         'hsl(187 85% 53%)',
-  'Voice Command Layer': 'hsl(25 95% 60%)',
-  'Storage Layer':       'hsl(55 80% 52%)',
-  'System Utilities':    'hsl(215 20% 60%)',
+const LAYER_PALETTE: Record<string, { hue: number; icon: string }> = {
+  'UI Layer':            { hue: 210, icon: '🖥' },
+  'State Layer':         { hue: 262, icon: '⚙' },
+  'Sensor Layer':        { hue: 142, icon: '📡' },
+  'Computation Layer':   { hue: 38,  icon: '🔢' },
+  'Coach Layer':         { hue: 340, icon: '🏃' },
+  'Audio Layer':         { hue: 187, icon: '🔊' },
+  'Voice Command Layer': { hue: 25,  icon: '🎤' },
+  'Storage Layer':       { hue: 55,  icon: '💾' },
+  'System Utilities':    { hue: 215, icon: '🛠' },
 };
 
-const GROUP_WIDTH = 260;
-const CHILD_HEIGHT = 62;
-const CHILD_GAP = 8;
-const GROUP_HEADER_H = 48;
-const GROUP_PAD = 12;
-
-const groupH = (n: number) =>
-  GROUP_HEADER_H + GROUP_PAD + n * (CHILD_HEIGHT + CHILD_GAP) - CHILD_GAP + GROUP_PAD;
-
-// Pre-computed 4-column layout (col width=260, col gap=30)
-// Col 0 (x=0):   UI(h=472), VoiceCmd(h=200)   → stacked at y=0, 492
-// Col 1 (x=290): State(h=200), Sensor(h=268), Comp(h=268)
-// Col 2 (x=580): Coach(h=336), Audio(h=268)
-// Col 3 (x=870): Storage(h=404), SysUtils(h=268)
-const LAYER_POSITIONS: Record<string, { x: number; y: number }> = {
-  'UI Layer':            { x: 0,   y: 0   },
-  'Voice Command Layer': { x: 0,   y: 492 },
-  'State Layer':         { x: 290, y: 0   },
-  'Sensor Layer':        { x: 290, y: 220 },
-  'Computation Layer':   { x: 290, y: 508 },
-  'Coach Layer':         { x: 580, y: 0   },
-  'Audio Layer':         { x: 580, y: 356 },
-  'Storage Layer':       { x: 870, y: 0   },
-  'System Utilities':    { x: 870, y: 424 },
+const getLayerColor = (layer: string, alpha = '1'): string => {
+  const p = LAYER_PALETTE[layer];
+  const hue = p?.hue ?? 215;
+  return `hsla(${hue} 75% 55% / ${alpha})`;
 };
+
+const getLayerIcon = (layer: string) => LAYER_PALETTE[layer]?.icon ?? '📦';
+
+// ── Layout constants ──────────────────────────────────────────────────────────
+
+const COL_WIDTH    = 280;  // width of each layer group column
+const COL_GAP      = 28;   // horizontal gap between columns
+const ROW_GAP      = 24;   // vertical gap between groups in the same column
+const HEADER_H     = 52;   // group header height
+const PAD          = 10;   // internal padding
+const CHILD_H      = 66;   // height of each child block
+const CHILD_GAP    = 6;    // vertical gap between child blocks
+const NUM_COLS     = 4;    // max columns
+
+const groupHeight = (childCount: number) =>
+  HEADER_H + PAD + childCount * (CHILD_H + CHILD_GAP) - CHILD_GAP + PAD;
+
+/**
+ * Auto-layout: pack layers into NUM_COLS columns using a "shortest column" strategy.
+ */
+function computeLayerPositions(
+  layerMap: Map<string, BlockNode[]>
+): Map<string, { x: number; y: number }> {
+  const colHeights = Array(NUM_COLS).fill(0);
+  const positions  = new Map<string, { x: number; y: number }>();
+
+  // fixed column order if we can match the known layers, else just pack
+  const ORDER: string[] = [
+    'UI Layer',
+    'State Layer',
+    'Sensor Layer',
+    'Computation Layer',
+    'Coach Layer',
+    'Audio Layer',
+    'Voice Command Layer',
+    'Storage Layer',
+    'System Utilities',
+  ];
+
+  const ordered: string[] = [
+    ...ORDER.filter((l) => layerMap.has(l)),
+    ...[...layerMap.keys()].filter((l) => !ORDER.includes(l)),
+  ];
+
+  ordered.forEach((layer) => {
+    const count = layerMap.get(layer)!.length;
+    const h     = groupHeight(count);
+
+    // Find the column with the least accumulated height
+    let shortestCol = 0;
+    for (let c = 1; c < NUM_COLS; c++) {
+      if (colHeights[c] < colHeights[shortestCol]) shortestCol = c;
+    }
+
+    const x = shortestCol * (COL_WIDTH + COL_GAP);
+    const y = colHeights[shortestCol];
+    positions.set(layer, { x, y });
+
+    colHeights[shortestCol] += h + ROW_GAP;
+  });
+
+  return positions;
+}
 
 // ── Custom node: Layer group container ────────────────────────────────────────
 
 const LayerGroupNode = memo(({ data }: NodeProps) => {
-  const d = data as { label: string; color: string; count: number };
+  const d = data as { label: string; color: string; borderColor: string; icon: string; count: number };
   return (
     <div
-      className="h-full w-full rounded-xl border-2"
-      style={{ borderColor: `${d.color}35`, background: `${d.color}07` }}
+      className="h-full w-full rounded-2xl overflow-hidden"
+      style={{
+        border: `1.5px solid ${d.borderColor}`,
+        background: `${d.color}`,
+        boxShadow: `0 0 0 1px ${d.borderColor}22, 0 8px 32px ${d.borderColor}18`,
+        backdropFilter: 'blur(12px)',
+      }}
     >
+      {/* Group header */}
       <div
-        className="flex items-center gap-2 px-3 rounded-t-xl border-b"
-        style={{ height: GROUP_HEADER_H, borderColor: `${d.color}30`, background: `${d.color}14` }}
+        className="flex items-center gap-2.5 px-3"
+        style={{
+          height: HEADER_H,
+          borderBottom: `1px solid ${d.borderColor}`,
+          background: `${d.borderColor}22`,
+        }}
       >
-        <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: d.color }} />
+        <span className="text-base leading-none">{d.icon}</span>
         <span
-          className="text-[11px] font-bold uppercase tracking-widest truncate"
-          style={{ color: d.color }}
+          className="text-[11px] font-extrabold uppercase tracking-[0.12em] truncate"
+          style={{ color: d.borderColor }}
         >
           {d.label}
         </span>
         <span
-          className="ml-auto text-[10px] font-mono tabular-nums shrink-0 px-1.5 py-0.5 rounded-full"
-          style={{ color: d.color, background: `${d.color}18` }}
+          className="ml-auto shrink-0 text-[10px] font-bold tabular-nums px-2 py-0.5 rounded-full"
+          style={{
+            color: d.borderColor,
+            background: `${d.borderColor}22`,
+            border: `1px solid ${d.borderColor}44`,
+          }}
         >
           {d.count}
         </span>
@@ -94,31 +153,50 @@ LayerGroupNode.displayName = 'LayerGroupNode';
 // ── Custom node: Functional block child ───────────────────────────────────────
 
 const FunctionalBlockNode = memo(({ data, selected }: NodeProps) => {
-  const d = data as { label: string; description: string; blockType: string; color: string };
+  const d = data as {
+    label: string;
+    description: string;
+    blockType: string;
+    color: string;
+    dotColor: string;
+  };
   return (
     <div
       className={cn(
-        'h-full w-full rounded-lg border px-2.5 py-2 transition-all cursor-pointer select-none',
-        selected && 'ring-1'
+        'h-full w-full rounded-xl px-2.5 py-2 transition-all duration-150 cursor-pointer select-none',
+        'flex flex-col justify-between',
+        selected && 'ring-1 ring-offset-0'
       )}
       style={{
-        background: selected ? `${d.color}1A` : `${d.color}0C`,
-        borderColor: selected ? d.color : `${d.color}35`,
+        background: selected ? `${d.dotColor}22` : `${d.dotColor}0F`,
+        border: `1px solid ${selected ? d.dotColor : d.dotColor + '40'}`,
+        boxShadow: selected ? `0 0 12px ${d.dotColor}30` : 'none',
       }}
     >
+      {/* Hidden handles so ReactFlow doesn't complain */}
+      <Handle type="source" position={Position.Right} style={{ opacity: 0, width: 1, height: 1 }} />
+      <Handle type="target" position={Position.Left}  style={{ opacity: 0, width: 1, height: 1 }} />
+
       <div className="flex items-start justify-between gap-1">
-        <span className="text-xs font-semibold text-zinc-200 leading-tight truncate">
-          {d.label}
-        </span>
+        <div className="flex items-center gap-1.5 min-w-0">
+          <div
+            className="w-1.5 h-1.5 rounded-full shrink-0 mt-0.5"
+            style={{ background: d.dotColor }}
+          />
+          <span className="text-[11px] font-semibold text-zinc-200 leading-tight truncate">
+            {d.label}
+          </span>
+        </div>
         <span
-          className="shrink-0 text-[9px] uppercase font-medium px-1 py-0.5 rounded"
-          style={{ color: d.color, background: `${d.color}1A` }}
+          className="shrink-0 text-[8.5px] uppercase font-bold px-1.5 py-0.5 rounded"
+          style={{ color: d.dotColor, background: `${d.dotColor}1A`, letterSpacing: '0.05em' }}
         >
           {d.blockType}
         </span>
       </div>
+
       {d.description && (
-        <p className="text-[10px] text-zinc-500 mt-1 line-clamp-2 leading-tight">
+        <p className="text-[9.5px] text-zinc-500 mt-1 line-clamp-2 leading-tight">
           {d.description}
         </p>
       )}
@@ -127,11 +205,11 @@ const FunctionalBlockNode = memo(({ data, selected }: NodeProps) => {
 });
 FunctionalBlockNode.displayName = 'FunctionalBlockNode';
 
-// ── Node type registry ────────────────────────────────────────────────────────
+// ── Node type registry ─────────────────────────────────────────────────────────
 
 const nodeTypes = {
-  operational:   OperationalNode,
-  layerGroup:    LayerGroupNode,
+  operational:     OperationalNode,
+  layerGroup:      LayerGroupNode,
   functionalBlock: FunctionalBlockNode,
 };
 
@@ -148,7 +226,7 @@ const RELATION_STYLES: Record<string, { stroke: string; strokeDasharray?: string
   explains:        { stroke: 'hsl(262 60% 50%)', strokeDasharray: '3 3' },
 };
 
-// ── Main component ────────────────────────────────────────────────────────────
+// ── Main component ─────────────────────────────────────────────────────────────
 
 export const ArchitectureCanvas = () => {
   const project          = useAppStore((s) => s.project);
@@ -183,49 +261,64 @@ export const ArchitectureCanvas = () => {
         layerMap.get(layer)!.push(block);
       }
 
+      const positions = computeLayerPositions(layerMap);
       const newNodes: Node[] = [];
-      for (const [layer, layerBlocks] of layerMap) {
-        const color   = LAYER_COLORS[layer] ?? 'hsl(215 20% 60%)';
-        const pos     = LAYER_POSITIONS[layer] ?? { x: 0, y: 0 };
-        const height  = groupH(layerBlocks.length);
-        const groupId = `layer-group-${layer.replace(/\s+/g, '-').toLowerCase()}`;
 
-        // Group container node
+      for (const [layer, layerBlocks] of layerMap) {
+        const pos      = positions.get(layer) ?? { x: 0, y: 0 };
+        const height   = groupHeight(layerBlocks.length);
+        const groupId  = `layer-group-${layer.replace(/\s+/g, '-').toLowerCase()}`;
+        const dotColor = getLayerColor(layer);
+        const bgColor  = getLayerColor(layer, '0.06');
+        const icon     = getLayerIcon(layer);
+
+        // Layer group container
         newNodes.push({
-          id: groupId,
-          type: 'layerGroup',
+          id:       groupId,
+          type:     'layerGroup',
           position: pos,
-          style: { width: GROUP_WIDTH, height },
-          data: { label: layer, color, count: layerBlocks.length },
+          style:    { width: COL_WIDTH, height },
+          data: {
+            label:       layer,
+            icon,
+            color:       bgColor,
+            borderColor: dotColor,
+            count:       layerBlocks.length,
+          },
           selectable: false,
-          draggable: true,
-          zIndex: 0,
+          draggable:  true,
+          zIndex:     0,
         } as Node);
 
-        // Child block nodes (relative to group)
+        // Child block nodes (positioned relative to parent group)
         layerBlocks.forEach((block, i) => {
           newNodes.push({
-            id: block.id,
-            type: 'functionalBlock',
+            id:       block.id,
+            type:     'functionalBlock',
             parentId: groupId,
-            extent: 'parent',
+            extent:   'parent',
             position: {
-              x: GROUP_PAD,
-              y: GROUP_HEADER_H + GROUP_PAD + i * (CHILD_HEIGHT + CHILD_GAP),
+              x: PAD,
+              y: HEADER_H + PAD + i * (CHILD_H + CHILD_GAP),
             },
-            style: { width: GROUP_WIDTH - GROUP_PAD * 2, height: CHILD_HEIGHT },
+            style: {
+              width:  COL_WIDTH - PAD * 2,
+              height: CHILD_H,
+            },
             data: {
               label:       block.label,
               description: block.description ?? '',
               blockType:   block.type,
-              color,
+              color:       bgColor,
+              dotColor,
             },
-            selected: selectedNodeId === block.id,
+            selected:  selectedNodeId === block.id,
             draggable: false,
-            zIndex: 1,
+            zIndex:    1,
           } as Node);
         });
       }
+
       setNodes(newNodes);
       return;
     }
@@ -242,8 +335,8 @@ export const ArchitectureCanvas = () => {
           y: existingPos?.y ?? storedPos?.y ?? defaultPos?.y ?? Math.floor(idx / 4) * 200,
         };
         return {
-          id: block.id,
-          type: 'operational',
+          id:       block.id,
+          type:     'operational',
           position,
           selected: selectedNodeId === block.id,
           data: {
@@ -314,30 +407,30 @@ export const ArchitectureCanvas = () => {
         onNodeDragStop={handleNodeDragStop}
         onPaneClick={handlePaneClick}
         fitView
-        fitViewOptions={{ padding: 0.25 }}
+        fitViewOptions={{ padding: 0.15 }}
         snapToGrid={true}
-        snapGrid={[24, 24]}
+        snapGrid={[8, 8]}
         connectionLineType={ConnectionLineType.SmoothStep}
         defaultEdgeOptions={{
           type: 'smoothstep',
           style: { stroke: 'hsl(215 20% 40%)', strokeWidth: 2 },
         }}
         proOptions={{ hideAttribution: true }}
-        minZoom={0.1}
+        minZoom={0.05}
         maxZoom={2}
       >
-        <Background color="hsl(222 30% 25%)" gap={24} size={1.5} variant={BackgroundVariant.Dots} />
+        <Background color="hsl(222 30% 20%)" gap={24} size={1} variant={BackgroundVariant.Dots} />
         <Controls className="[&>button]:!bg-zinc-800 [&>button]:!border-zinc-700 [&>button]:!text-zinc-300 [&>button:hover]:!bg-zinc-700" />
         <MiniMap
           className="!bg-zinc-900 !border-zinc-700"
           nodeColor={(n) =>
             n.type === 'layerGroup'
-              ? (n.data as { color: string }).color + '60'
+              ? (n.data as { borderColor: string }).borderColor + '80'
               : n.type === 'functionalBlock'
-              ? (n.data as { color: string }).color
+              ? (n.data as { dotColor: string }).dotColor + 'cc'
               : 'hsl(187 85% 53%)'
           }
-          maskColor="hsla(222 47% 6% / 0.85)"
+          maskColor="hsla(222 47% 6% / 0.88)"
           style={{ borderRadius: 12 }}
         />
       </ReactFlow>
