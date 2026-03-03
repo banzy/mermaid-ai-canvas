@@ -1,11 +1,11 @@
 import type { MindProject } from './schemas';
 
 /**
- * The MindtoBlocks app describing itself — used as the default/demo project.
+ * The MindToBlocks app describing itself — used as the default/demo project.
  */
 export const MINDTOBLOCKS_SELF: MindProject = {
   id: 'mindtoblocks-self',
-  name: 'MindtoBlocks',
+  name: 'MindToBlocks',
   description:
     'An application that converts software ideas into high-level operational blocks, functional blocks, and flowchart views, and lets users edit the blocks and regenerate textual explanations.',
 

@@ -12,7 +12,7 @@ const Examples = () => {
   const handleUse = () => {
     setProject(MINDTOBLOCKS_SELF);
     setCurrentProjectId(null);
-    toast.success('Loaded MindtoBlocks demo project');
+    toast.success('Loaded MindToBlocks demo project');
     navigate('/');
   };
 
@@ -36,7 +36,7 @@ const Examples = () => {
 
       <main className="container mx-auto px-4 py-8 max-w-4xl">
         <div className="grid gap-6">
-          {/* MindtoBlocks Self-Describing Project */}
+          {/* MindToBlocks Self-Describing Project */}
           <div className="glass rounded-xl overflow-hidden hover:border-primary/50 transition-all duration-300 hover:shadow-glow">
             <div className="p-6">
               <div className="flex items-start justify-between gap-4 mb-4">

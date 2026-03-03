@@ -50,7 +50,7 @@ async function deriveKey(salt: Uint8Array): Promise<CryptoKey> {
   // Get a seed from the browser's random data combined with a fixed string
   // This creates a deterministic but unique key per browser
   const seedData = new TextEncoder().encode(
-    'mermaid-ai-canvas-secure-storage-key'
+    'mindtoblocks-secure-storage-key'
   );
   
   const keyMaterial = await crypto.subtle.importKey(

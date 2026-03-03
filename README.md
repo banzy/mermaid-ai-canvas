@@ -1,4 +1,5 @@
-# Welcome to your Lovable project
+# MindToBlocks
+> AI-powered software architecture modeling and visualization.
 
 ## Project info
 

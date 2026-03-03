@@ -108,7 +108,7 @@ export const Header = () => {
             <Boxes className="h-5 w-5 text-primary-foreground" />
           </div>
           <div>
-            <h1 className="font-semibold text-foreground">MindtoBlocks</h1>
+            <h1 className="font-semibold text-foreground">MindToBlocks</h1>
             <p className="text-xs text-muted-foreground">
               {currentProject ? currentProject.name : project.name}
               {isDirty && <span className="text-warning ml-1">•</span>}

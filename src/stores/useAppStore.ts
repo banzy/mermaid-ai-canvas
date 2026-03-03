@@ -381,6 +381,6 @@ export const useAppStore = create<AppState>()(
         }),
       }
     ),
-    { name: 'MindtoBlocks' }
+    { name: 'MindToBlocks' }
   )
 );

@@ -1,8 +1,8 @@
-# Mermaid Preview Controls
+# MindToBlocks Preview Controls
 
 ## Mouse & Trackpad Controls
 
-The Mermaid diagram preview supports intuitive controls for navigation and zooming:
+The MindToBlocks diagram preview supports intuitive controls for navigation and zooming:
 
 ### Scrolling (Panning)
 - **Mouse Wheel / Trackpad Scroll**: Pan the diagram vertically and horizontally
@@ -57,7 +57,7 @@ The control toolbar is positioned in the **top-right corner** of the preview are
 
 ## Implementation Details
 
-File: `src/components/editor/MermaidPreview.tsx`
+File: `src/components/editor/ArchitectureCanvas.tsx`
 
 ### Scroll Behavior
 ```typescript

@@ -46,7 +46,7 @@ const getApiUrl = async () => {
 };
 
 const getSystemPrompt = (context?: string) => {
-  let prompt = `You are MindtoBlocks — an architecture assistant that creates and modifies structured operational and functional block diagrams from software descriptions.
+  let prompt = `You are MindToBlocks — an architecture assistant that creates and modifies structured operational and functional block diagrams from software descriptions.
 
 When the user describes a software idea, analyze it and respond with a JSON object following this structure:
 {

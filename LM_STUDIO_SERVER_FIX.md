@@ -60,37 +60,37 @@ data: [DONE]
 ```
 
 ### 3. POST /api/explain
-**Purpose:** Explain a Mermaid diagram  
+**Purpose:** Explain an architecture model  
 **Method:** POST  
 **Request Body:**
 ```json
 {
-  "mermaid": "graph TD\n  A-->B"
+  "projectJson": "{ \"operationalBlocks\": [...], \"functionalBlocks\": [...], \"relations\": [...], \"flows\": [...] }"
 }
 ```
 
 **Response:**
 ```json
 {
-  "explanation": "This is a flowchart showing..."
+  "explanation": "This is an architecture model showing..."
 }
 ```
 
 ### 4. POST /api/refine
-**Purpose:** Refine a Mermaid diagram based on instructions  
+**Purpose:** Refine an architecture model based on instructions  
 **Method:** POST  
 **Request Body:**
 ```json
 {
-  "mermaid": "graph TD\n  A-->B",
-  "instruction": "Add more nodes"
+  "projectJson": "{ ... }",
+  "instruction": "Add more blocks"
 }
 ```
 
 **Response:**
 ```json
 {
-  "mermaid": "graph TD\n  A-->B\n  B-->C"
+  "projectJson": "{ ... updated JSON ... }"
 }
 ```
 
