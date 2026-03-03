@@ -1,160 +1,272 @@
 import type { MindProject } from './schemas';
 
 /**
- * The MindToBlocks app describing itself — used as the default/demo project.
+ * Running Coach App — used as the default/demo project.
+ * A smart iOS running companion with real-time coaching, GPS tracking, and voice feedback.
  */
 export const MINDTOBLOCKS_SELF: MindProject = {
-  id: 'mindtoblocks-self',
-  name: 'MindToBlocks',
+  id: 'running-coach-app',
+  name: 'Running Coach',
   description:
-    'An application that converts software ideas into high-level operational blocks, functional blocks, and flowchart views, and lets users edit the blocks and regenerate textual explanations.',
+    'A smart iOS running companion that uses GPS tracking, real-time pace analysis, and AI coaching to guide runners with voice feedback, mixing seamlessly with their music.',
+
+  // ── Operational Blocks (System Behavior View) ────────────────────────────────
 
   operationalBlocks: [
     {
-      id: 'idea-capture',
-      label: 'Idea Capture',
-      description: 'Accepts the user\'s raw product or software idea via text or voice.',
+      id: 'app-lifecycle',
+      label: 'App Lifecycle & Permissions',
+      description: 'Onboarding, requesting Location/Motion/Microphone permissions, background modes setup.',
       kind: 'operational',
-      type: 'interaction',
-      children: ['fn-text-input', 'fn-prompt-history', 'fn-generate-command'],
+      type: 'orchestration',
+      children: [],
     },
     {
-      id: 'semantic-parsing',
-      label: 'Semantic Parsing',
-      description: 'Interprets the idea and identifies capabilities, actors, and responsibilities.',
+      id: 'run-session-control',
+      label: 'Run Session Control',
+      description: 'Start/pause/resume/stop, session state machine, timers, segmenting the run.',
       kind: 'operational',
-      type: 'transformation',
-      children: [
-        'fn-capability-extractor', 'fn-actor-extractor', 'fn-block-classifier',
-        'fn-relationship-extractor', 'fn-flow-extractor', 'fn-ambiguity-detector',
-      ],
+      type: 'orchestration',
+      children: ['fn-session-state-machine', 'fn-session-manager'],
     },
     {
-      id: 'architecture-modeling',
-      label: 'Architecture Modeling',
-      description: 'Creates and maintains the structured semantic graph used by the entire app.',
+      id: 'sensor-acquisition',
+      label: 'Sensor Acquisition',
+      description: 'GPS sampling, altitude/elevation reading, motion data, heart-rate via HealthKit.',
       kind: 'operational',
       type: 'subsystem',
-      children: [
-        'fn-node-registry', 'fn-edge-registry', 'fn-hierarchy-manager',
-        'fn-view-model-builder', 'fn-version-state',
-      ],
+      children: ['fn-location-service', 'fn-motion-service', 'fn-health-service'],
     },
     {
-      id: 'view-generation',
-      label: 'View Generation',
-      description: 'Transforms the model into readable operational, functional, and flow projections.',
+      id: 'metric-computation',
+      label: 'Metric Computation',
+      description: 'Distance accumulation, pace calculation, elevation gain/loss, smoothing/filtering GPS jitter, split/lap calculations.',
       kind: 'operational',
       type: 'transformation',
-      children: [
-        'fn-canvas-renderer', 'fn-layout-engine', 'fn-group-renderer',
-        'fn-flow-renderer', 'fn-focus-mode',
-      ],
+      children: ['fn-metrics-engine', 'fn-smoothing-filter', 'fn-split-engine'],
     },
     {
-      id: 'visual-editing',
-      label: 'Visual Editing',
-      description: 'Allows the user to refine the architecture directly on the visual canvas.',
+      id: 'coach-decision-engine',
+      label: 'Coach Decision Engine',
+      description: 'Decides what to say based on triggers: time/distance milestones, pace deviation, fatigue signals, user preferences.',
+      kind: 'operational',
+      type: 'transformation',
+      children: ['fn-coach-manager', 'fn-trigger-engine', 'fn-message-planner', 'fn-user-profile-model'],
+    },
+    {
+      id: 'speech-audio-mixing',
+      label: 'Speech Output & Audio Mixing',
+      description: 'Configures AVAudioSession to mix with music, generates TTS, ducks music when speaking, manages audio queue.',
       kind: 'operational',
       type: 'interaction',
-      children: ['fn-block-interaction-layer'],
+      children: ['fn-audio-session-controller', 'fn-speech-manager', 'fn-speech-queue'],
     },
     {
-      id: 'reverse-explanation',
-      label: 'Reverse Explanation',
-      description: 'Turns the current model back into readable narrative and architecture summaries.',
+      id: 'voice-commands',
+      label: 'Voice Commands',
+      description: 'Listens for start/pause/resume/stop, validates intent, executes run-control actions safely.',
       kind: 'operational',
-      type: 'transformation',
-      children: [
-        'fn-summary-generator', 'fn-block-explainer',
-        'fn-flow-narrator', 'fn-change-narrator',
-      ],
+      type: 'interaction',
+      children: ['fn-voice-command-manager', 'fn-intent-parser'],
     },
     {
-      id: 'project-persistence',
-      label: 'Project Persistence',
-      description: 'Stores the current project, version history, and supports import/export.',
+      id: 'realtime-sync',
+      label: 'Realtime Sync',
+      description: 'Optional future: streams telemetry to server and consumes opponent updates for friend racing.',
+      kind: 'operational',
+      type: 'subsystem',
+      children: ['fn-connectivity-monitor'],
+    },
+    {
+      id: 'local-persistence',
+      label: 'Local Persistence',
+      description: 'Saves run summary + route samples + coach events, handles offline mode and crash recovery.',
       kind: 'operational',
       type: 'storage',
-      children: ['fn-project-store', 'fn-snapshot-store', 'fn-import-export-handler'],
+      children: ['fn-run-storage-manager', 'fn-run-model', 'fn-runpoint-model', 'fn-coach-event-model', 'fn-settings-model'],
+    },
+    {
+      id: 'post-run-summary',
+      label: 'Post-Run Summary & Insights',
+      description: 'Generates stats + charts + spoken recap, highlights milestones, compares to past runs.',
+      kind: 'operational',
+      type: 'transformation',
+      children: [],
+    },
+    {
+      id: 'history-analytics',
+      label: 'History & Analytics',
+      description: 'List/detail views, weekly/monthly aggregates, best times, streaks.',
+      kind: 'operational',
+      type: 'interaction',
+      children: [],
+    },
+    {
+      id: 'settings-personalization',
+      label: 'Settings & Personalization',
+      description: 'Toggles for coach, voice commands, voice selection, units, notification cadence, privacy controls.',
+      kind: 'operational',
+      type: 'interaction',
+      children: [],
+    },
+    {
+      id: 'reliability-edge-cases',
+      label: 'Reliability & Edge Cases',
+      description: 'Background/foreground transitions, GPS loss, low battery mode, network loss, permission revocation.',
+      kind: 'operational',
+      type: 'orchestration',
+      children: ['fn-background-task-coordinator', 'fn-logger'],
     },
   ],
 
+  // ── Functional / Structural Blocks (Architecture View) ───────────────────────
+
   functionalBlocks: [
-    { id: 'fn-text-input', label: 'Text Input', kind: 'functional', type: 'input', description: 'Accepts raw app description from the user.' },
-    { id: 'fn-prompt-history', label: 'Prompt History', kind: 'functional', type: 'input', description: 'Stores previous prompts and refinements.' },
-    { id: 'fn-generate-command', label: 'Generate Command', kind: 'functional', type: 'input', description: 'Starts the generation process.' },
-    { id: 'fn-capability-extractor', label: 'Capability Extractor', kind: 'functional', type: 'parser', description: 'Finds the main capabilities in the app description.' },
-    { id: 'fn-actor-extractor', label: 'Actor Extractor', kind: 'functional', type: 'parser', description: 'Finds the main actors and roles.' },
-    { id: 'fn-block-classifier', label: 'Block Classifier', kind: 'functional', type: 'classifier', description: 'Assigns extracted concepts to block types.' },
-    { id: 'fn-relationship-extractor', label: 'Relationship Extractor', kind: 'functional', type: 'parser', description: 'Finds dependencies and interactions.' },
-    { id: 'fn-flow-extractor', label: 'Flow Extractor', kind: 'functional', type: 'parser', description: 'Builds core flows from described behavior.' },
-    { id: 'fn-ambiguity-detector', label: 'Ambiguity Detector', kind: 'functional', type: 'classifier', description: 'Flags vague or conflicting concepts.' },
-    { id: 'fn-node-registry', label: 'Node Registry', kind: 'functional', type: 'model', description: 'Stores all nodes/blocks.' },
-    { id: 'fn-edge-registry', label: 'Edge Registry', kind: 'functional', type: 'model', description: 'Stores all relationships.' },
-    { id: 'fn-hierarchy-manager', label: 'Hierarchy Manager', kind: 'functional', type: 'model', description: 'Maintains parent-child and grouping structures.' },
-    { id: 'fn-view-model-builder', label: 'View Model Builder', kind: 'functional', type: 'model', description: 'Creates per-view graph projections.' },
-    { id: 'fn-version-state', label: 'Version State', kind: 'functional', type: 'model', description: 'Tracks edits and versions over time.' },
-    { id: 'fn-canvas-renderer', label: 'Canvas Renderer', kind: 'functional', type: 'renderer', description: 'Renders blocks and edges on screen.' },
-    { id: 'fn-layout-engine', label: 'Layout Engine', kind: 'functional', type: 'renderer', description: 'Places elements for readability.' },
-    { id: 'fn-group-renderer', label: 'Group Renderer', kind: 'functional', type: 'renderer', description: 'Displays grouped structures.' },
-    { id: 'fn-flow-renderer', label: 'Flow Renderer', kind: 'functional', type: 'renderer', description: 'Displays ordered flows and branches.' },
-    { id: 'fn-focus-mode', label: 'Focus Mode', kind: 'functional', type: 'renderer', description: 'Shows one selected subdomain or flow.' },
-    { id: 'fn-block-interaction-layer', label: 'Block Interaction Layer', kind: 'functional', type: 'editor', description: 'Handles selection, dragging, renaming, and connection edits.' },
-    { id: 'fn-summary-generator', label: 'Summary Generator', kind: 'functional', type: 'generator', description: 'Generates a concise architecture summary.' },
-    { id: 'fn-block-explainer', label: 'Block Explainer', kind: 'functional', type: 'generator', description: 'Explains a selected block.' },
-    { id: 'fn-flow-narrator', label: 'Flow Narrator', kind: 'functional', type: 'generator', description: 'Explains a selected flow.' },
-    { id: 'fn-change-narrator', label: 'Change Narrator', kind: 'functional', type: 'generator', description: 'Explains changes between versions.' },
-    { id: 'fn-project-store', label: 'Project Store', kind: 'functional', type: 'persistence', description: 'Stores and restores project data.' },
-    { id: 'fn-snapshot-store', label: 'Snapshot Store', kind: 'functional', type: 'persistence', description: 'Stores version snapshots.' },
-    { id: 'fn-import-export-handler', label: 'Import/Export Handler', kind: 'functional', type: 'persistence', description: 'Imports and exports project JSON.' },
+    // UI Layer
+    { id: 'fn-home-view', label: 'HomeView', kind: 'functional', type: 'renderer', description: 'Main screen with Start Run, History, and Settings options.' },
+    { id: 'fn-run-view', label: 'RunView', kind: 'functional', type: 'renderer', description: 'Active run screen showing real-time metrics, map, and controls.' },
+    { id: 'fn-summary-view', label: 'SummaryView', kind: 'functional', type: 'renderer', description: 'Post-run summary with stats, charts, and sharing options.' },
+    { id: 'fn-history-view', label: 'HistoryListView', kind: 'functional', type: 'renderer', description: 'List of past runs with filtering and search.' },
+    { id: 'fn-run-detail-view', label: 'RunDetailView', kind: 'functional', type: 'renderer', description: 'Detailed view of a single past run with map and splits.' },
+    { id: 'fn-settings-view', label: 'SettingsView', kind: 'functional', type: 'renderer', description: 'Preferences for coaching, voice, units, and privacy.' },
+
+    // State & Session Layer
+    { id: 'fn-session-state-machine', label: 'RunSessionStateMachine', kind: 'functional', type: 'model', description: 'State machine: Idle → Preparing → Running → Paused → Finishing → Summary.' },
+    { id: 'fn-session-manager', label: 'RunSessionManager', kind: 'functional', type: 'model', description: 'Single source of truth for the active run session.' },
+
+    // Sensor Layer
+    { id: 'fn-location-service', label: 'LocationService', kind: 'functional', type: 'input', description: 'CoreLocation wrapper for GPS sampling and altitude.' },
+    { id: 'fn-motion-service', label: 'MotionService', kind: 'functional', type: 'input', description: 'CoreMotion wrapper for cadence and step data (optional).' },
+    { id: 'fn-health-service', label: 'HealthService', kind: 'functional', type: 'input', description: 'HealthKit wrapper for heart-rate monitoring (optional).' },
+
+    // Computation Layer
+    { id: 'fn-metrics-engine', label: 'MetricsEngine', kind: 'functional', type: 'parser', description: 'Calculates distance, pace, and elevation from raw sensor data.' },
+    { id: 'fn-smoothing-filter', label: 'SmoothingFilter', kind: 'functional', type: 'parser', description: 'Filters GPS jitter for accurate route tracking.' },
+    { id: 'fn-split-engine', label: 'SplitEngine', kind: 'functional', type: 'parser', description: 'Manages lap/split calculations and per-km breakdowns.' },
+
+    // Coach Layer
+    { id: 'fn-coach-manager', label: 'CoachManager', kind: 'functional', type: 'classifier', description: 'Orchestrates coaching logic and coordinates triggers with speech.' },
+    { id: 'fn-trigger-engine', label: 'TriggerEngine', kind: 'functional', type: 'classifier', description: 'Evaluates rules/events: distance milestones, pace deviation, fatigue.' },
+    { id: 'fn-message-planner', label: 'MessagePlanner', kind: 'functional', type: 'generator', description: 'Selects and formats coaching messages from templates (AI later).' },
+    { id: 'fn-user-profile-model', label: 'UserProfileModel', kind: 'functional', type: 'model', description: 'Stores user tone, intensity, and coaching preferences.' },
+
+    // Audio Layer
+    { id: 'fn-audio-session-controller', label: 'AudioSessionController', kind: 'functional', type: 'editor', description: 'Configures AVAudioSession with mixWithOthers and duckOthers.' },
+    { id: 'fn-speech-manager', label: 'SpeechManager', kind: 'functional', type: 'generator', description: 'AVSpeechSynthesizer wrapper for text-to-speech output.' },
+    { id: 'fn-speech-queue', label: 'SpeechQueue', kind: 'functional', type: 'generator', description: 'Prevents overlaps, prioritizes urgent cues.' },
+
+    // Voice Command Layer
+    { id: 'fn-voice-command-manager', label: 'VoiceCommandManager', kind: 'functional', type: 'input', description: 'SFSpeechRecognizer wrapper for hands-free control.' },
+    { id: 'fn-intent-parser', label: 'IntentParser', kind: 'functional', type: 'classifier', description: 'Maps recognized phrases to run-control actions.' },
+
+    // Storage Layer
+    { id: 'fn-run-storage-manager', label: 'RunStorageManager', kind: 'functional', type: 'persistence', description: 'CoreData/SQLite wrapper for run persistence.' },
+    { id: 'fn-run-model', label: 'Run Model', kind: 'functional', type: 'persistence', description: 'Data model for a single run session.' },
+    { id: 'fn-runpoint-model', label: 'RunPoint Model', kind: 'functional', type: 'persistence', description: 'Data model for GPS route sample points.' },
+    { id: 'fn-coach-event-model', label: 'CoachEvent Model', kind: 'functional', type: 'persistence', description: 'Data model for coaching events and triggers.' },
+    { id: 'fn-settings-model', label: 'SettingsModel', kind: 'functional', type: 'persistence', description: 'Data model for user preferences and settings.' },
+
+    // System Utilities
+    { id: 'fn-background-task-coordinator', label: 'BackgroundTaskCoordinator', kind: 'functional', type: 'model', description: 'Manages background updates and resilience during app transitions.' },
+    { id: 'fn-connectivity-monitor', label: 'ConnectivityMonitor', kind: 'functional', type: 'model', description: 'Monitors network reachability for optional sync features.' },
+    { id: 'fn-logger', label: 'Logger', kind: 'functional', type: 'model', description: 'Debug logging and analytics hooks.' },
   ],
 
+  // ── Relations (Operational System Behavior) ──────────────────────────────────
+
   relations: [
-    // Operational relations
-    { id: 'r-op-1', from: 'idea-capture', to: 'semantic-parsing', type: 'feeds' },
-    { id: 'r-op-2', from: 'semantic-parsing', to: 'architecture-modeling', type: 'transforms_into' },
-    { id: 'r-op-3', from: 'architecture-modeling', to: 'view-generation', type: 'feeds' },
-    { id: 'r-op-4', from: 'view-generation', to: 'visual-editing', type: 'feeds' },
-    { id: 'r-op-5', from: 'visual-editing', to: 'architecture-modeling', type: 'updates' },
-    { id: 'r-op-6', from: 'architecture-modeling', to: 'reverse-explanation', type: 'feeds' },
-    { id: 'r-op-7', from: 'architecture-modeling', to: 'project-persistence', type: 'persists_to' },
+    // Linear chain: Lifecycle → Session → Sensors → Metrics → Coach → Speech
+    { id: 'r-op-1', from: 'app-lifecycle', to: 'run-session-control', type: 'triggers' },
+    { id: 'r-op-2', from: 'run-session-control', to: 'sensor-acquisition', type: 'triggers' },
+    { id: 'r-op-3', from: 'sensor-acquisition', to: 'metric-computation', type: 'feeds' },
+    { id: 'r-op-4', from: 'metric-computation', to: 'coach-decision-engine', type: 'feeds' },
+    { id: 'r-op-5', from: 'coach-decision-engine', to: 'speech-audio-mixing', type: 'feeds' },
+
+    // Parallel connections
+    { id: 'r-par-1', from: 'voice-commands', to: 'run-session-control', type: 'triggers' },
+    { id: 'r-par-2', from: 'metric-computation', to: 'local-persistence', type: 'persists_to' },
+    { id: 'r-par-3', from: 'run-session-control', to: 'post-run-summary', type: 'feeds' },
+    { id: 'r-par-4', from: 'local-persistence', to: 'history-analytics', type: 'feeds' },
+    { id: 'r-par-5', from: 'settings-personalization', to: 'coach-decision-engine', type: 'feeds' },
+    { id: 'r-par-6', from: 'reliability-edge-cases', to: 'run-session-control', type: 'updates' },
+    { id: 'r-par-7', from: 'run-session-control', to: 'reliability-edge-cases', type: 'feeds' },
+    { id: 'r-par-8', from: 'post-run-summary', to: 'local-persistence', type: 'persists_to' },
+    { id: 'r-par-9', from: 'realtime-sync', to: 'run-session-control', type: 'feeds' },
   ],
+
+  // ── Flows (Flow Chart — User Journey View) ───────────────────────────────────
 
   flows: [
     {
-      id: 'flow-text-to-blocks',
-      label: 'Text to Blocks',
+      id: 'flow-app-launch',
+      label: 'App Launch & Onboarding',
       steps: [
-        'User enters app description',
-        'User triggers generation',
-        'System extracts capabilities and relationships',
-        'System builds structured model',
-        'System generates operational and functional views',
-        'System generates summary text',
-        'User reviews the result',
+        'Start App',
+        'Show Onboarding / Request Permissions',
+        'If permissions denied → show limited mode + guidance',
+        'Navigate to Home Screen',
+        'Choose: Start Run / History / Settings',
       ],
     },
     {
-      id: 'flow-blocks-to-text',
-      label: 'Blocks to Text',
+      id: 'flow-start-run',
+      label: 'Start Run',
       steps: [
-        'User edits block or relation',
-        'System updates graph model',
-        'System refreshes affected layout',
-        'System regenerates explanation',
-        'System stores version delta',
+        'User taps Start Run',
+        'Initialize audio session (mix with music)',
+        'Initialize GPS + sensors',
+        'Start timers',
+        'Enter Running State',
       ],
     },
     {
-      id: 'flow-iterative-refinement',
-      label: 'Iterative Refinement',
+      id: 'flow-running-loop',
+      label: 'Running Loop',
       steps: [
-        'User requests a refinement',
-        'System translates request into model operations',
-        'System updates graph',
-        'System refreshes view and summary',
-        'System saves new version',
+        'Read GPS / altitude / motion data',
+        'Compute metrics (distance / pace / elevation)',
+        'Update UI with live stats',
+        'Check triggers (time, distance, pace drift, fatigue)',
+        'If trigger → generate coach message → enqueue speech',
+        'If voice command detected → execute action',
+        'Repeat every N seconds',
+      ],
+    },
+    {
+      id: 'flow-pause-resume',
+      label: 'Pause & Resume',
+      steps: [
+        'User pauses run',
+        'Reduce sensor frequency',
+        'Pause timers (mark paused segments)',
+        'Coach says "Paused"',
+        'User resumes run',
+        'Restore high-accuracy sensors',
+        'Resume timers / segments',
+        'Coach says "Back on track"',
+      ],
+    },
+    {
+      id: 'flow-stop-summary',
+      label: 'Stop Run & Summary',
+      steps: [
+        'User stops run',
+        'Finalize all metrics',
+        'Persist run + route + events',
+        'Generate summary + spoken recap',
+        'Show Run Summary Screen',
+        'Save / Share / Done',
+      ],
+    },
+    {
+      id: 'flow-history',
+      label: 'History Browse',
+      steps: [
+        'Open History from Home',
+        'List past runs',
+        'Select a run → open details',
+        'View map, splits, coach events',
+        'Navigate back or end',
       ],
     },
   ],
@@ -174,14 +286,25 @@ export const BLOCK_TYPE_COLORS: Record<string, string> = {
 
 /**
  * Operational block positions for the default layout.
- * Keys map to block IDs.
+ * Arranged in a top-down flow with parallel branches on the sides.
  */
 export const DEFAULT_OPERATIONAL_POSITIONS: Record<string, { x: number; y: number }> = {
-  'idea-capture':          { x: 0,    y: 160 },
-  'semantic-parsing':      { x: 320,  y: 160 },
-  'architecture-modeling': { x: 640,  y: 160 },
-  'view-generation':       { x: 960,  y: 160 },
-  'visual-editing':        { x: 1280, y: 60  },
-  'reverse-explanation':   { x: 1280, y: 260 },
-  'project-persistence':   { x: 960,  y: 380 },
+  // Main linear chain (center column)
+  'app-lifecycle':          { x: 500,  y: 0   },
+  'run-session-control':    { x: 500,  y: 180 },
+  'sensor-acquisition':     { x: 500,  y: 360 },
+  'metric-computation':     { x: 500,  y: 540 },
+  'coach-decision-engine':  { x: 500,  y: 720 },
+  'speech-audio-mixing':    { x: 500,  y: 900 },
+
+  // Left branch (inputs & control)
+  'voice-commands':         { x: 100,  y: 180 },
+  'settings-personalization': { x: 100, y: 720 },
+  'reliability-edge-cases': { x: 100,  y: 360 },
+
+  // Right branch (outputs & storage)
+  'local-persistence':      { x: 900,  y: 540 },
+  'post-run-summary':       { x: 900,  y: 180 },
+  'history-analytics':      { x: 900,  y: 720 },
+  'realtime-sync':          { x: 900,  y: 360 },
 };
