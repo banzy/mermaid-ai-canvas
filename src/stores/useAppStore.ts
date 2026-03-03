@@ -34,6 +34,7 @@ interface AppState {
   // Block mutations
   renameNode: (id: string, newLabel: string) => void;
   updateNodeDescription: (id: string, description: string) => void;
+  updateNodePosition: (id: string, position: { x: number; y: number }) => void;
   addNode: (node: BlockNode) => void;
   deleteNode: (id: string) => void;
   addRelation: (relation: Relation) => void;
@@ -130,6 +131,20 @@ export const useAppStore = create<AppState>()(
           const { project } = get();
           const updateBlocks = (blocks: BlockNode[]) =>
             blocks.map(b => b.id === id ? { ...b, description } : b);
+          set({
+            project: {
+              ...project,
+              operationalBlocks: updateBlocks(project.operationalBlocks),
+              functionalBlocks: updateBlocks(project.functionalBlocks),
+            },
+            isDirty: true,
+          });
+        },
+        
+        updateNodePosition: (id, position) => {
+          const { project } = get();
+          const updateBlocks = (blocks: BlockNode[]) =>
+            blocks.map(b => b.id === id ? { ...b, position } : b);
           set({
             project: {
               ...project,

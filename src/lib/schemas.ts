@@ -29,6 +29,7 @@ export const blockNodeSchema = z.object({
   description: z.string().optional(),
   kind: blockKindSchema,
   type: blockTypeSchema,
+  position: z.object({ x: z.number(), y: z.number() }).optional(),
   children: z.array(z.string()).optional(),
   metadata: z.record(z.unknown()).optional(),
 });
